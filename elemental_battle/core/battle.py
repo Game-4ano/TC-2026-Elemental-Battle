@@ -1,28 +1,14 @@
-
-from core.elements import calculate_damage
-
+"""
+Controla a lógica de batalha.
+"""
 
 class Battle:
+    """Gerencia batalha entre dois personagens."""
 
-    def __init__(self, player, enemy):
+    def __init__(self, player, enemy, enemy_ai=None):
         self.player = player
         self.enemy = enemy
-        self.current_turn = player
-
-    def switch_turn(self):
-        self.current_turn = (
-            self.enemy if self.current_turn == self.player else self.player
-        )
-
-    def perform_attack(self):
-        attacker = self.current_turn
-        defender = self.enemy if attacker == self.player else self.player
-
-        damage = attacker.attack(defender, calculate_damage)
-
-        print(f"{attacker.name} causou {damage} de dano!")
-
-        self.switch_turn()
+        self.enemy_ai = enemy_ai
 
     def is_over(self):
         return not self.player.is_alive() or not self.enemy.is_alive()
@@ -33,3 +19,10 @@ class Battle:
         if not self.enemy.is_alive():
             return self.player
         return None
+
+    def execute_player_action(self, action):
+        return action.execute(self.player, self.enemy)
+
+    def execute_enemy_turn(self):
+        action = self.enemy_ai.choose_action(self)
+        return action.execute(self.enemy, self.player)
