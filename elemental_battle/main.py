@@ -1,18 +1,31 @@
 from core.character import Character
-from data.maps_data import maps
 from core.game import Game
+from data.maps_data import maps
 
 player = Character("Hero", 120, 20, 5, "Fire", "Water")
 
 game = Game(player, maps)
 
-battle = game.start_next_battle()
+while True:
+    battle = game.start_next_battle()
 
-while not battle.is_over():
-    input("Pressione Enter para atacar...")
-    damage = battle.attack()
-    print(f"Dano causado: {damage}")
-    print(f"HP Player: {battle.player.hp}")
-    print(f"HP Enemy: {battle.enemy.hp}")
+    print(f"\nIniciando batalha contra {battle.enemy.name}!")
 
-print("Batalha encerrada!")
+    while not battle.is_over():
+        input("Pressione Enter para atacar...")
+        battle.perform_attack()
+        print(f"HP Player: {battle.player.hp}")
+        print(f"HP Enemy: {battle.enemy.hp}")
+
+    winner = battle.get_winner()
+
+    if winner == player:
+        print("Você venceu!")
+        game.reward_player(battle.enemy)
+    else:
+        print("Você perdeu!")
+        break
+
+    if battle.enemy.is_boss:
+        print("Mapa concluído!")
+        break

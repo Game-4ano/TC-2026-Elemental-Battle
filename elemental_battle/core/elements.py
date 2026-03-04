@@ -1,5 +1,5 @@
 """
-Define relações de vantagem elemental.
+Sistema de vantagem elemental.
 """
 
 element_advantage = {
@@ -7,7 +7,7 @@ element_advantage = {
     "Water": "Fire",
     "Grass": "Water",
     "Electric": "Water",
-    "Dark": "Fire"
+    "Dark": "Fire",
 }
 
 

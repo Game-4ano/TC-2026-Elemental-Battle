@@ -1,5 +1,12 @@
+from config import (
+    XP_PER_LEVEL,
+    HP_LEVEL_INCREMENT,
+    DAMAGE_LEVEL_INCREMENT,
+    DEFENSE_LEVEL_INCREMENT,
+)
+
+
 class Character:
-    """Representa um personagem jogável ou inimigo."""
 
     def __init__(self, name, hp, damage, defense, element, weakness, is_boss=False):
         self.name = name
@@ -10,6 +17,7 @@ class Character:
         self.element = element
         self.weakness = weakness
         self.level = 1
+        self.xp = 0
         self.is_boss = is_boss
 
     def is_alive(self):
@@ -20,9 +28,20 @@ class Character:
         self.hp -= real_damage
         return real_damage
 
+    def attack(self, target, damage_calculator):
+        damage = damage_calculator(self, target)
+        return target.take_damage(damage)
+
+    def gain_xp(self, amount):
+        self.xp += amount
+        while self.xp >= XP_PER_LEVEL:
+            self.xp -= XP_PER_LEVEL
+            self.level_up()
+
     def level_up(self):
         self.level += 1
-        self.max_hp += 10
-        self.damage += 5
-        self.defense += 2
+        self.max_hp += HP_LEVEL_INCREMENT
+        self.damage += DAMAGE_LEVEL_INCREMENT
+        self.defense += DEFENSE_LEVEL_INCREMENT
         self.hp = self.max_hp
+        print(f"{self.name} subiu para o nível {self.level}!")
