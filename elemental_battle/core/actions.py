@@ -17,3 +17,14 @@ class AttackAction(Action):
             "defender": defender.name,
             "damage": damage,
         }
+
+
+class DefendAction(Action):
+    """Ação de defesa."""
+
+    def execute(self, attacker, defender):
+        attacker.is_defending = True
+        return {
+            "type": "defend",
+            "character": attacker.name,
+        }

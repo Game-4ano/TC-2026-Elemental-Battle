@@ -1,41 +1,101 @@
 from core.character import Character
-from core.game import Game
-from core.game_state import GameState
-from core.actions import AttackAction
-from data.maps_data import maps
+from core.battle import Battle
+from core.actions import AttackAction, DefendAction
+from core.ai import BasicAI  # ajuste se o nome do arquivo for diferente
 
-player = Character("Hero", 120, 20, 5, "Fire", "Water")
 
-game = Game(player, maps)
+def print_battle_start(player, enemy):
+    print("\n==============================")
+    print("       BATALHA INICIADA       ")
+    print("==============================")
+    print(f"{player.name} VS {enemy.name}")
+    print("==============================\n")
 
-battle = game.start_game()
 
-while game.state not in (GameState.GAME_OVER, GameState.GAME_COMPLETE):
+def print_action_result(result):
+    if result["type"] == "attack":
+        print(
+            f'{result["attacker"]} atacou {result["defender"]} '
+            f'e causou {result["damage"]} de dano!'
+        )
+    elif result["type"] == "defend":
+        print(f'{result["character"]} está se defendendo!')
 
-    print(f"\nBatalha contra {battle.enemy.name}")
 
+def get_player_action():
+    print("\nSeu turno:")
+    print("1 - Atacar")
+    print("2 - Defender")
+
+    while True:
+        choice = input("Escolha: ")
+
+        actions = {
+            "1": AttackAction(),
+            "2": DefendAction(),
+        }
+
+        action = actions.get(choice)
+
+        if action:
+            return action
+
+        print("Opção inválida. Tente novamente.")
+
+
+def main():
+    # Criando jogador
+    player = Character(
+        name="Hero",
+        hp=100,
+        damage=20,
+        defense=5,
+        element="Fire",
+        weakness="Water",
+    )
+
+    # Criando inimigo
+    enemy = Character(
+        name="Orc",
+        hp=80,
+        damage=15,
+        defense=3,
+        element="Grass",
+        weakness="Fire",
+    )
+
+    enemy_ai = BasicAI()
+
+    battle = Battle(player, enemy, enemy_ai)
+
+    print_battle_start(player, enemy)
+
+    # Loop principal da batalha
     while not battle.is_over():
 
-        input("Pressione Enter para atacar...")
-
-        result = battle.execute_player_action(AttackAction())
-        print(f"{result['attacker']} causou {result['damage']} de dano!")
+        # Turno do jogador
+        action = get_player_action()
+        result = battle.execute_player_action(action)
+        print_action_result(result)
 
         if battle.is_over():
             break
 
-        result = battle.execute_enemy_turn()
-        print(f"{result['attacker']} causou {result['damage']} de dano!")
+        # Turno do inimigo
+        enemy_result = battle.execute_enemy_turn()
+        print_action_result(enemy_result)
 
-        print(f"HP Player: {battle.player.hp}")
-        print(f"HP Enemy: {battle.enemy.hp}")
+        # Mostrar HP após rodada
+        print(f"\n{player.name}: {player.hp}/{player.max_hp} HP")
+        print(f"{enemy.name}: {enemy.hp}/{enemy.max_hp} HP")
 
     winner = battle.get_winner()
 
-    if winner == player:
-        print("Vitória!")
-        game.handle_victory(battle.enemy)
-        battle = game._start_next_battle()
-    else:
-        print("Game Over!")
-        game.state = GameState.GAME_OVER
+    print("\n==============================")
+    print("        BATALHA FINALIZADA     ")
+    print("==============================")
+    print(f"Vencedor: {winner.name}")
+
+
+if __name__ == "__main__":
+    main()

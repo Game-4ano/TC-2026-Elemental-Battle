@@ -1,7 +1,4 @@
-"""
-Controla a lógica de batalha.
-"""
-
+from core.actions import AttackAction, DefendAction
 class Battle:
     """Gerencia batalha entre dois personagens."""
 
@@ -26,3 +23,18 @@ class Battle:
     def execute_enemy_turn(self):
         action = self.enemy_ai.choose_action(self)
         return action.execute(self.enemy, self.player)
+    
+    def get_player_action_from_input(self):
+        print("\nSeu turno:")
+        print("1 - Atacar")
+        print("2 - Defender")
+        while True:
+            choice = input("Escolha: ")
+            actions = {
+                "1": AttackAction(),
+                "2": DefendAction()
+            }
+            action = actions.get(choice)
+            if action:
+                return action
+            print("Opção inválida. Tente novamente.")
