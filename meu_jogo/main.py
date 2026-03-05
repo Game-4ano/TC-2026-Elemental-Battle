@@ -1,15 +1,8 @@
-<<<<<<< HEAD:elemental_battle/main.py
-from core.character import Character
-from core.battle import Battle
-from core.actions import AttackAction, DefendAction
-from core.ai import BasicAI  # ajuste se o nome do arquivo for diferente
-=======
 from meu_jogo.entidades.character import Character
 from meu_jogo.core.game import Game
 from meu_jogo.core.game_state import GameState
 from meu_jogo.entidades.acoes import AttackAction
 from meu_jogo.data.maps_data import maps
->>>>>>> origin/dev:meu_jogo/main.py
 
 
 def print_battle_start(player, enemy):
