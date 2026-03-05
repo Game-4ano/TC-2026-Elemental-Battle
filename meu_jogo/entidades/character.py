@@ -1,4 +1,4 @@
-from config import (
+from meu_jogo.core.config import (
     XP_PER_LEVEL,
     HP_LEVEL_INCREMENT,
     DAMAGE_LEVEL_INCREMENT,
@@ -45,7 +45,3 @@ class Character:
         self.defense += DEFENSE_LEVEL_INCREMENT
         self.hp = self.max_hp
         print(f"{self.name} subiu para o nível {self.level}!")
-
-
-
-        # criação das caracteristicas de personagem

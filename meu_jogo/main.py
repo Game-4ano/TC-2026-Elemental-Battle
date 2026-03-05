@@ -1,7 +1,7 @@
 from meu_jogo.entidades.character import Character
 from meu_jogo.core.game import Game
 from meu_jogo.core.game_state import GameState
-from core.actions import AttackAction
+from meu_jogo.entidades.acoes import AttackAction
 from meu_jogo.data.maps_data import maps
 
 player = Character("Hero", 120, 20, 5, "Fire", "Water")

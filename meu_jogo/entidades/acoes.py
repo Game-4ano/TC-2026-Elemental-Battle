@@ -1,4 +1,5 @@
-from core.elements import calculate_damage
+
+from meu_jogo.core.elements import calculate_damage
 
 
 class Action:
@@ -17,5 +18,3 @@ class AttackAction(Action):
             "defender": defender.name,
             "damage": damage,
         }
-    
-    #ações
