@@ -26,3 +26,6 @@ class Battle:
     def execute_enemy_turn(self):
         action = self.enemy_ai.choose_action(self)
         return action.execute(self.enemy, self.player)
+    
+
+    #lógica de batalha

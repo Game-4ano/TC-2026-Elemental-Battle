@@ -45,3 +45,7 @@ class Character:
         self.defense += DEFENSE_LEVEL_INCREMENT
         self.hp = self.max_hp
         print(f"{self.name} subiu para o nível {self.level}!")
+
+
+
+        # criação das caracteristicas de personagem

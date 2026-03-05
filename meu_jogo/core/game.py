@@ -4,8 +4,8 @@ Controla fluxo geral do jogo.
 
 from core.battle import Battle
 from core.ai import BasicAI
-from core.game_state import GameState
-from config import DEFAULT_XP_REWARD, BOSS_XP_REWARD
+from meu_jogo.core.game_state import GameState
+from meu_jogo.testes.teste_movimentacao import DEFAULT_XP_REWARD, BOSS_XP_REWARD
 
 
 class Game:

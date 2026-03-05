@@ -21,3 +21,5 @@ def calculate_damage(attacker, defender):
         base_damage *= 1.2
 
     return base_damage
+
+# caracteristicas do inimigos

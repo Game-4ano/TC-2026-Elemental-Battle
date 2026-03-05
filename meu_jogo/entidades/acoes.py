@@ -17,3 +17,5 @@ class AttackAction(Action):
             "defender": defender.name,
             "damage": damage,
         }
+    
+    #ações
