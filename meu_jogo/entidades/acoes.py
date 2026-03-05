@@ -1,4 +1,5 @@
-from core.elements import calculate_damage
+
+from meu_jogo.core.elements import calculate_damage
 
 
 class Action:

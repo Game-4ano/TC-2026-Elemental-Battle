@@ -37,4 +37,10 @@ def calculate_damage(attacker, defender):
     if attacker.element == defender.weakness:
         base_damage *= 1.2
 
+<<<<<<< HEAD:elemental_battle/core/elements.py
     return int(base_damage)
+=======
+    return base_damage
+
+# caracteristicas do inimigos
+>>>>>>> origin/dev:meu_jogo/core/elements.py

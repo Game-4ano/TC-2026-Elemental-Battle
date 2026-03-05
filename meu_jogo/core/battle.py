@@ -24,6 +24,7 @@ class Battle:
         action = self.enemy_ai.choose_action(self)
         return action.execute(self.enemy, self.player)
     
+<<<<<<< HEAD:elemental_battle/core/battle.py
     def get_player_action_from_input(self):
         print("\nSeu turno:")
         print("1 - Atacar")
@@ -38,3 +39,7 @@ class Battle:
             if action:
                 return action
             print("Opção inválida. Tente novamente.")
+=======
+
+    #lógica de batalha
+>>>>>>> origin/dev:meu_jogo/core/battle.py

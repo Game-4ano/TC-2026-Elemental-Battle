@@ -1,4 +1,4 @@
-from config import (
+from meu_jogo.core.config import (
     XP_PER_LEVEL,
     HP_LEVEL_INCREMENT,
     DAMAGE_LEVEL_INCREMENT,
