@@ -27,6 +27,7 @@ while game.state not in (GameState.GAME_OVER, GameState.GAME_COMPLETE):
         result = battle.execute_enemy_turn()
         print(f"{result['attacker']} causou {result['damage']} de dano!")
 
+
         print(f"HP Player: {battle.player.hp}")
         print(f"HP Enemy: {battle.enemy.hp}")
 
@@ -39,3 +40,5 @@ while game.state not in (GameState.GAME_OVER, GameState.GAME_COMPLETE):
     else:
         print("Game Over!")
         game.state = GameState.GAME_OVER
+
+    
