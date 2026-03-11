@@ -1,8 +1,10 @@
-
+import pygame
 from meu_jogo.core.battle import Battle
 from meu_jogo.entidades.character import Character
 from meu_jogo.entidades.ai_entidade import BasicAI
 from meu_jogo.entidades.acoes import DefendAction, AttackAction
+from meu_jogo.core.map import Map
+from meu_jogo.data.maps_data import MAP_MATRIX, TILE_TYPES
 
 def print_battle_start(player, enemy):
     print("\n==============================")
@@ -43,7 +45,7 @@ def get_player_action():
         print("Opção inválida. Tente novamente.")
 
 
-def main():
+def main_battle():
     # Criando jogador
     player = Character(
         name="Hero",
@@ -97,29 +99,26 @@ def main():
     print(f"Vencedor: {winner.name}")
 
 
-if __name__ == "__main__":
-    main()
-
-import pygame
-from meu_jogo.core.map import Map
-from meu_jogo.data.maps_data import MAP_MATRIX, TILE_TYPES
-
-# Inicializa o Pygame
-pygame.init()
-
-# Configurações da tela
-SCREEN_WIDTH = 800
-SCREEN_HEIGHT = 600
-SCREEN = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-pygame.display.set_caption("Elemental Battle - Mapa")
-
-# Cores
-WHITE = (255, 255, 255)
-
 def main_map_render():
+    # Inicializa o Pygame
+    pygame.init()
+
+    # Configurações da tela
+    SCREEN_WIDTH = 800
+    SCREEN_HEIGHT = 600
+    SCREEN = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+    pygame.display.set_caption("Elemental Battle - Mapa")
+
+    # Cores
+    WHITE = (255, 255, 255)
+
     game_map = Map(MAP_MATRIX, TILE_TYPES)
 
     running = True
+    clock = pygame.time.Clock()
+
+    print("\nAbrindo visualização do mapa... Feche a janela do Pygame para encerrar.")
+
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -128,10 +127,13 @@ def main_map_render():
         SCREEN.fill(WHITE)  # Preenche o fundo com branco
         game_map.draw(SCREEN)
         pygame.display.flip() # Atualiza a tela
+        clock.tick(60) # Limita a 60 FPS
 
     pygame.quit()
 
 if __name__ == "__main__":
-    # Comente ou remova a chamada original de main() se quiser testar apenas o mapa
-    # main()
+    # Por padrão, abre a visualização do mapa conforme solicitado
     main_map_render()
+    
+    # Se quiser rodar a batalha via console depois, pode descomentar:
+    # main_battle()
