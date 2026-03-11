@@ -60,3 +60,12 @@ class Map:
         """
         self.camera_offset_x = x
         self.camera_offset_y = y
+
+class GameMap:
+    """
+    Classe para compatibilidade com a estrutura antiga de dados de mapa.
+    """
+    def __init__(self, name, enemies, boss):
+        self.name = name
+        self.enemies = enemies
+        self.boss = boss

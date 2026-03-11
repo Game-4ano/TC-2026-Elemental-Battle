@@ -1,6 +1,7 @@
-from meu_jogo.core.map import GameMap
+from meu_jogo.core.map import Tile, GameMap
 from meu_jogo.data.characters_data import slime, goblin, wolf, forest_guardian
 
+# Dados de mapas antigos (para compatibilidade)
 map1 = GameMap(
     "Floresta",
     enemies=[slime, goblin, wolf],
@@ -9,9 +10,7 @@ map1 = GameMap(
 
 maps = [map1]
 
-from meu_jogo.core.map import Tile
-
-# Definição dos tipos de tiles
+# Definição dos tipos de tiles para o novo sistema de mapas
 TILE_TYPES = {
     "G": Tile("Grama", "Terra", (34, 139, 34), True),  # Verde escuro
     "P": Tile("Poça", "Água", (30, 144, 255), True, damage_on_step=5),  # Azul dodger
@@ -21,7 +20,7 @@ TILE_TYPES = {
     " ": Tile("Vazio", "Nenhum", (0, 0, 0), True),  # Preto (espaço vazio)
 }
 
-# Exemplo de matriz de mapa
+# Exemplo de matriz de mapa para o novo sistema
 MAP_MATRIX = [
     ["X", "X", "X", "X", "X", "X", "X", "X", "X", "X"],
     ["X", "G", "G", "G", "G", "G", "G", "G", "G", "X"],
