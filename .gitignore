@@ -1,1 +1,9 @@
-venv
+# Ignorar ambiente virtual
+jogo/
+
+# Ignorar arquivos gerados pelo Python
+__pycache__/
+*.pyc
+
+# Ignorar configurações locais de ambiente virtual
+pyvenv.cfg
