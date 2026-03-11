@@ -99,3 +99,39 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+import pygame
+from meu_jogo.core.map import Map
+from meu_jogo.data.maps_data import MAP_MATRIX, TILE_TYPES
+
+# Inicializa o Pygame
+pygame.init()
+
+# Configurações da tela
+SCREEN_WIDTH = 800
+SCREEN_HEIGHT = 600
+SCREEN = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+pygame.display.set_caption("Elemental Battle - Mapa")
+
+# Cores
+WHITE = (255, 255, 255)
+
+def main_map_render():
+    game_map = Map(MAP_MATRIX, TILE_TYPES)
+
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+
+        SCREEN.fill(WHITE)  # Preenche o fundo com branco
+        game_map.draw(SCREEN)
+        pygame.display.flip() # Atualiza a tela
+
+    pygame.quit()
+
+if __name__ == "__main__":
+    # Comente ou remova a chamada original de main() se quiser testar apenas o mapa
+    # main()
+    main_map_render()
