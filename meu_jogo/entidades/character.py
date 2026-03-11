@@ -20,11 +20,18 @@ class Character:
         self.xp = 0
         self.is_boss = is_boss
 
+        self.is_defending = False
+
     def is_alive(self):
         return self.hp > 0
 
     def take_damage(self, amount):
         real_damage = max(amount - self.defense, 0)
+
+        if self.is_defending:
+            real_damage = int(real_damage * 0.5)
+            self.is_defending = False  
+
         self.hp -= real_damage
         return real_damage
 
