@@ -1,4 +1,7 @@
-from core.actions import AttackAction, DefendAction
+
+from meu_jogo.entidades.acoes import AttackAction, DefendAction
+
+
 class Battle:
     """Gerencia batalha entre dois personagens."""
 

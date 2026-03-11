@@ -1,9 +1,8 @@
-from meu_jogo.entidades.character import Character
-from meu_jogo.core.game import Game
-from meu_jogo.core.game_state import GameState
-from meu_jogo.entidades.acoes import AttackAction
-from meu_jogo.data.maps_data import maps
 
+from meu_jogo.core.battle import Battle
+from meu_jogo.entidades.character import Character
+from meu_jogo.entidades.ai_entidade import BasicAI
+from meu_jogo.entidades.acoes import DefendAction, AttackAction
 
 def print_battle_start(player, enemy):
     print("\n==============================")
