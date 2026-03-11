@@ -1,4 +1,5 @@
-from core.elements import calculate_damage
+
+from meu_jogo.core.elements import calculate_damage
 
 
 class Action:
@@ -16,4 +17,15 @@ class AttackAction(Action):
             "attacker": attacker.name,
             "defender": defender.name,
             "damage": damage,
+        }
+
+
+class DefendAction(Action):
+    """Ação de defesa."""
+
+    def execute(self, attacker, defender):
+        attacker.is_defending = True
+        return {
+            "type": "defend",
+            "character": attacker.name,
         }

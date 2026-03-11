@@ -1,4 +1,4 @@
-from core.character import Character
+from meu_jogo.entidades.character import Character
 
 slime = Character("Slime", 50, 10, 2, "Grass", "Fire")
 goblin = Character("Goblin", 70, 12, 4, "Grass", "Fire")

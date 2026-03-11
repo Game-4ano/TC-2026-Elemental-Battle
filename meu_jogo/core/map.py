@@ -4,3 +4,7 @@ class GameMap:
         self.name = name
         self.enemies = enemies
         self.boss = boss
+
+
+
+#configuração por mapa

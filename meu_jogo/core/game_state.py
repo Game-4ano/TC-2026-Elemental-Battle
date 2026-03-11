@@ -7,3 +7,5 @@ class GameState(Enum):
     MAP_COMPLETE = 3
     GAME_OVER = 4
     GAME_COMPLETE = 5
+
+    #estado atual do jogo
