@@ -1,4 +1,4 @@
-from meu_jogo.core.map import Tile, GameMap
+from meu_jogo.core.map import Tile, GameMap, GrassTile, WaterTile, FireTile, WindTile, WallTile
 from meu_jogo.data.characters_data import slime, goblin, wolf, forest_guardian
 
 # Dados de mapas antigos (para compatibilidade)
@@ -10,26 +10,31 @@ map1 = GameMap(
 
 maps = [map1]
 
-# Definição dos tipos de tiles para o novo sistema de mapas
+# Definição dos tipos de tiles usando Polimorfismo
 TILE_TYPES = {
-    "G": Tile("Grama", "Terra", (34, 139, 34), True),  # Verde escuro
-    "P": Tile("Poça", "Água", (30, 144, 255), True, damage_on_step=5),  # Azul dodger
-    "B": Tile("Brasa", "Fogo", (255, 69, 0), True, damage_on_step=10),  # Laranja avermelhado
-    "V": Tile("Vento", "Ar", (173, 216, 230), True),  # Azul claro
-    "X": Tile("Montanha", "Nenhum", (139, 69, 19), False),  # Marrom (obstáculo)
-    " ": Tile("Vazio", "Nenhum", (0, 0, 0), True),  # Preto (espaço vazio)
+    "G": GrassTile(),
+    "P": WaterTile(),
+    "B": FireTile(),
+    "V": WindTile(),
+    "X": WallTile(),
+    " ": GrassTile(), # Vazio como grama por padrão
 }
 
-# Exemplo de matriz de mapa para o novo sistema
+# Matriz de mapa maior (20x15) com biomas elementais
 MAP_MATRIX = [
-    ["X", "X", "X", "X", "X", "X", "X", "X", "X", "X"],
-    ["X", "G", "G", "G", "G", "G", "G", "G", "G", "X"],
-    ["X", "G", "P", "P", "G", "G", "G", "B", "G", "X"],
-    ["X", "G", "P", "P", "G", "G", "B", "B", "G", "X"],
-    ["X", "G", "G", "G", "G", "G", "G", "G", "G", "X"],
-    ["X", "G", "V", "V", "G", "G", "G", "G", "G", "X"],
-    ["X", "G", "V", "V", "G", "G", "G", "G", "G", "X"],
-    ["X", "G", "G", "G", "G", "G", "G", "G", "G", "X"],
-    ["X", "G", "G", "G", "G", "G", "G", "G", "G", "X"],
-    ["X", "X", "X", "X", "X", "X", "X", "X", "X", "X"],
+    ["X", "X", "X", "X", "X", "X", "X", "X", "X", "X", "X", "X", "X", "X", "X", "X", "X", "X", "X", "X"],
+    ["X", "G", "G", "G", "G", "X", "V", "V", "V", "V", "V", "V", "V", "V", "X", "G", "G", "G", "G", "X"],
+    ["X", "G", "G", "G", "G", "X", "V", "V", "V", "V", "V", "V", "V", "V", "X", "G", "G", "G", "G", "X"],
+    ["X", "G", "G", "G", "G", "X", "X", "X", "V", "V", "X", "X", "X", "X", "X", "G", "G", "G", "G", "X"],
+    ["X", "G", "G", "G", "G", "G", "G", "G", "G", "G", "G", "G", "G", "G", "G", "G", "G", "G", "G", "X"],
+    ["X", "X", "X", "G", "G", "X", "X", "X", "X", "X", "X", "X", "X", "G", "G", "X", "X", "X", "X", "X"],
+    ["X", "P", "P", "G", "G", "P", "P", "P", "P", "P", "P", "P", "P", "G", "G", "B", "B", "B", "B", "X"],
+    ["X", "P", "P", "G", "G", "P", "P", "P", "P", "P", "P", "P", "P", "G", "G", "B", "B", "B", "B", "X"],
+    ["X", "P", "P", "G", "G", "P", "P", "P", "P", "P", "P", "P", "P", "G", "G", "B", "B", "B", "B", "X"],
+    ["X", "X", "X", "G", "G", "X", "X", "X", "X", "X", "X", "X", "X", "G", "G", "X", "X", "X", "X", "X"],
+    ["X", "G", "G", "G", "G", "G", "G", "G", "G", "G", "G", "G", "G", "G", "G", "G", "G", "G", "G", "X"],
+    ["X", "G", "G", "G", "G", "X", "X", "X", "B", "B", "X", "X", "X", "X", "X", "G", "G", "G", "G", "X"],
+    ["X", "G", "G", "G", "G", "X", "B", "B", "B", "B", "B", "B", "B", "B", "X", "G", "G", "G", "G", "X"],
+    ["X", "G", "G", "G", "G", "X", "B", "B", "B", "B", "B", "B", "B", "B", "X", "G", "G", "G", "G", "X"],
+    ["X", "X", "X", "X", "X", "X", "X", "X", "X", "X", "X", "X", "X", "X", "X", "X", "X", "X", "X", "X"],
 ]
