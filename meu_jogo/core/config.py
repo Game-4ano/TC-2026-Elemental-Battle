@@ -1,36 +1,20 @@
-import pygame
-x = 400
-y = 300
-velocidade = 50
-pygame.init()
+"""
+Constantes globais do jogo.
+"""
 
-janela = pygame.display.set_mode((800,600))
-pygame.display.set_caption('Elmental-Battle')
+# Configurações de Tela
+SCREEN_WIDTH = 800
+SCREEN_HEIGHT = 600
+TILE_SIZE = 48  # Aumentado para melhor visualização
 
-janela_aberta = True
+# Configurações de Progressão
+XP_PER_LEVEL = 100
+HP_LEVEL_INCREMENT = 15
+DAMAGE_LEVEL_INCREMENT = 5
+DEFENSE_LEVEL_INCREMENT = 3
 
-while janela_aberta:
-    pygame.time.delay(50)
+DEFAULT_XP_REWARD = 50
+BOSS_XP_REWARD = 120
 
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            janela_aberta = False
-
-
-    comandos = pygame.key.get_pressed()
-    if comandos[pygame.K_UP]:
-        y-=velocidade
-    if comandos[pygame.K_DOWN]:
-        y+=velocidade
-    if comandos[pygame.K_LEFT]:
-        x-=velocidade
-    if comandos[pygame.K_RIGHT]:
-        x+=velocidade
-        
-    janela.fill((0,0,0))
-
-    pygame.draw.circle(janela,(0,255,0),(x,y),50)
-    pygame.display.update()
-
-
-pygame.quit()
+# Configurações de Movimento
+MOVE_SPEED = 0.15  # Velocidade da interpolação suave (0 a 1)

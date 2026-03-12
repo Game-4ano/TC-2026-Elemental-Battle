@@ -2,6 +2,7 @@
 Controla a lógica de batalha.
 """
 
+
 class Battle:
     """Gerencia batalha entre dois personagens."""
 

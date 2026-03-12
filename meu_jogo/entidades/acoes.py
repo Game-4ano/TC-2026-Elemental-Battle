@@ -1,3 +1,9 @@
+<<<<<<< HEAD:elemental_battle/core/actions.py
+=======
+from meu_jogo.core.elements import calculate_damage
+
+
+>>>>>>> origin/dev:meu_jogo/entidades/acoes.py
 class Action:
     """Classe base abstrata para todas as ações de batalha."""
     def __init__(self, name, power, element=None):
