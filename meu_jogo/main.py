@@ -1,105 +1,101 @@
-import pygame
-import sys
-from meu_jogo.core.config import SCREEN_WIDTH, SCREEN_HEIGHT, TILE_SIZE
-from meu_jogo.core.map import Map
-from meu_jogo.data.maps_data import MAP_MATRIX, TILE_TYPES
+
+from meu_jogo.core.battle import Battle
 from meu_jogo.entidades.character import Character
+from meu_jogo.entidades.ai_entidade import BasicAI
+from meu_jogo.entidades.acoes import DefendAction, AttackAction
 
-def draw_ui(surface, player):
-    """
-    Desenha a interface básica do jogador (HP).
-    """
-    font = pygame.font.SysFont("Arial", 24, bold=True)
-    
-    # Barra de HP de fundo (preta)
-    pygame.draw.rect(surface, (0, 0, 0), (20, 20, 200, 25))
-    
-    # Barra de HP preenchida (vermelha)
-    hp_ratio = player.hp / player.max_hp
-    pygame.draw.rect(surface, (255, 0, 0), (20, 20, int(200 * hp_ratio), 25))
-    
-    # Texto do HP
-    hp_text = font.render(f"HP: {player.hp}/{player.max_hp}", True, (255, 255, 255))
-    surface.blit(hp_text, (25, 20))
-    
-    # Nome e Elemento
-    info_text = font.render(f"{player.name} ({player.element})", True, (0, 0, 0))
-    surface.blit(info_text, (20, 50))
+def print_battle_start(player, enemy):
+    print("\n==============================")
+    print("       BATALHA INICIADA       ")
+    print("==============================")
+    print(f"{player.name} VS {enemy.name}")
+    print("==============================\n")
 
-def main_game():
-    # Inicializa o Pygame
-    pygame.init()
 
-    # Configurações da tela
-    SCREEN = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-    pygame.display.set_caption("Elemental Battle - Exploração")
-    clock = pygame.time.Clock()
+def print_action_result(result):
+    if result["type"] == "attack":
+        print(
+            f'{result["attacker"]} atacou {result["defender"]} '
+            f'e causou {result["damage"]} de dano!'
+        )
+    elif result["type"] == "defend":
+        print(f'{result["character"]} está se defendendo!')
 
-    # Instancia o mapa
-    game_map = Map(MAP_MATRIX, TILE_TYPES)
 
-    # Instancia o jogador (Fogo)
+def get_player_action():
+    print("\nSeu turno:")
+    print("1 - Atacar")
+    print("2 - Defender")
+
+    while True:
+        choice = input("Escolha: ")
+
+        actions = {
+            "1": AttackAction(),
+            "2": DefendAction(),
+        }
+
+        action = actions.get(choice)
+
+        if action:
+            return action
+
+        print("Opção inválida. Tente novamente.")
+
+
+def main():
+    # Criando jogador
     player = Character(
         name="Hero",
         hp=100,
         damage=20,
         defense=5,
         element="Fire",
-        weakness="Water"
+        weakness="Water",
     )
 
-    running = True
-    print("\n--- Elemental Battle ---")
-    print("Use as setas ou WASD para se mover.")
-    print("Pise em diferentes tiles para ver os efeitos elementais!")
+    # Criando inimigo
+    enemy = Character(
+        name="Orc",
+        hp=80,
+        damage=15,
+        defense=3,
+        element="Grass",
+        weakness="Fire",
+    )
 
-    while running:
-        # 1. Captura de Eventos
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-            
-            if event.type == pygame.KEYDOWN:
-                dx, dy = 0, 0
-                if event.key in [pygame.K_UP, pygame.K_w]:
-                    dy = -1
-                elif event.key in [pygame.K_DOWN, pygame.K_s]:
-                    dy = 1
-                elif event.key in [pygame.K_LEFT, pygame.K_a]:
-                    dx = -1
-                elif event.key in [pygame.K_RIGHT, pygame.K_d]:
-                    dx = 1
-                
-                if dx != 0 or dy != 0:
-                    player.move(dx, dy, game_map)
+    enemy_ai = BasicAI()
 
-        # 2. Atualização (Lógica)
-        player.update()
-        game_map.update_camera(player.pixel_x, player.pixel_y)
+    battle = Battle(player, enemy, enemy_ai)
 
-        # 3. Renderização
-        SCREEN.fill((200, 200, 200)) # Fundo cinza claro
-        
-        # Desenha o mapa com o offset da câmara
-        game_map.draw(SCREEN)
-        
-        # Desenha o jogador por cima do mapa
-        player.draw(SCREEN, game_map.camera_offset_x, game_map.camera_offset_y)
-        
-        # Desenha a UI (HP)
-        draw_ui(SCREEN, player)
+    print_battle_start(player, enemy)
 
-        pygame.display.flip()
-        clock.tick(60)
+    # Loop principal da batalha
+    while not battle.is_over():
 
-        # Verifica se o jogador morreu
-        if not player.is_alive():
-            print("\nGAME OVER! O herói sucumbiu aos elementos.")
-            pygame.time.wait(2000)
-            running = False
+        # Turno do jogador
+        action = get_player_action()
+        result = battle.execute_player_action(action)
+        print_action_result(result)
 
-    pygame.quit()
-    sys.exit()
+        if battle.is_over():
+            break
+
+        # Turno do inimigo
+        enemy_result = battle.execute_enemy_turn()
+        print_action_result(enemy_result)
+
+        # Mostrar HP após rodada
+        print(f"\n{player.name}: {player.hp}/{player.max_hp} HP")
+        print(f"{enemy.name}: {enemy.hp}/{enemy.max_hp} HP")
+
+    winner = battle.get_winner()
+
+    print("\n==============================")
+    print("        BATALHA FINALIZADA     ")
+    print("==============================")
+    print(f"Vencedor: {winner.name}")
+
 
 if __name__ == "__main__":
-    main_game()
+    main()
