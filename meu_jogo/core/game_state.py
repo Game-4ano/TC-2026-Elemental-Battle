@@ -3,9 +3,8 @@ from enum import Enum
 
 class GameState(Enum):
     MENU = 1
-    BATTLE = 2
-    MAP_COMPLETE = 3
-    GAME_OVER = 4
-    GAME_COMPLETE = 5
-
-    #estado atual do jogo
+    TRAINING = 2
+    BATTLE = 3
+    MAP_COMPLETE = 4
+    GAME_OVER = 5
+    GAME_COMPLETE = 6
