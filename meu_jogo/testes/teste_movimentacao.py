@@ -4,7 +4,10 @@ y = 300
 velocidade = 50
 pygame.init()
 
-janela = pygame.display.set_mode((800,600))
+
+fundo = pygame.image.load('mapa.PNG')
+
+janela = pygame.display.set_mode((700, 700))
 pygame.display.set_caption('Elmental-Battle')
 
 janela_aberta = True
@@ -27,7 +30,7 @@ while janela_aberta:
     if comandos[pygame.K_RIGHT]:
         x+=velocidade
         
-    janela.fill((0,0,0))
+    janela.blit(fundo,(0,0))
 
     pygame.draw.circle(janela,(0,255,0),(x,y),50)
     pygame.display.update()
