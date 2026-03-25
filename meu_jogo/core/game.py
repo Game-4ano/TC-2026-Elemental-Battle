@@ -3,7 +3,7 @@ Controla fluxo geral do jogo.
 """
 
 from meu_jogo.core.battle import Battle
-from meu_jogo.entidades.ai_entidade import BasicAI  # se você renomeou para ai.py, troque o import
+from meu_jogo.entidades.ai_entidade import BasicAI  
 from meu_jogo.core.game_state import GameState
 from meu_jogo.core.config import DEFAULT_XP_REWARD, BOSS_XP_REWARD
 

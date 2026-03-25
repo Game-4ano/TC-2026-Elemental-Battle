@@ -5,9 +5,9 @@ velocidade = 50
 pygame.init()
 
 
-fundo = pygame.image.load('mapa.PNG')
+fundo = pygame.image.load('mapa.png')
 
-janela = pygame.display.set_mode((700, 700))
+janela = pygame.display.set_mode((1920,1080))
 pygame.display.set_caption('Elmental-Battle')
 
 janela_aberta = True
