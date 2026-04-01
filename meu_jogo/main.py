@@ -16,9 +16,14 @@ def main():
         try:
             bg_image = pygame.image.load("mapa.jpg").convert()
         except Exception:
-            bg_image = None   # Sem fundo se não encontrar
+            bg_image = None
 
-    player      = Character("Hero", 120, 20, 5, "Fire", "Water")
+    # sprite_key="hero" → sprite_factory vai buscar o design do herói
+    player = Character(
+        "Hero", 120, 20, 5, "Fire", "Water",
+        sprite_key="hero",
+    )
+
     game        = Game(player, maps)
     map_manager = MapManager("MUNDO_ABERTO", ALL_MAP_DATA, bg_image=bg_image)
     manager     = GameManager(game, map_manager, player)

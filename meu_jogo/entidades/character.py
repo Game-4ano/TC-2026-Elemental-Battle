@@ -7,17 +7,23 @@ from meu_jogo.core.config import (
 
 
 class Character:
-    def __init__(self, name, hp, damage, defense, element, weakness, is_boss=False):
-        self.name = name
-        self.max_hp = hp
-        self.hp = hp
-        self.damage = damage
-        self.defense = defense
-        self.element = element
-        self.weakness = weakness
-        self.level = 1
-        self.xp = 0
-        self.is_boss = is_boss
+    def __init__(
+        self,
+        name, hp, damage, defense, element, weakness,
+        is_boss=False,
+        sprite_key=None,   # chave usada pela sprite_factory (ex: "slime", "hero")
+    ):
+        self.name       = name
+        self.max_hp     = hp
+        self.hp         = hp
+        self.damage     = damage
+        self.defense    = defense
+        self.element    = element
+        self.weakness   = weakness
+        self.level      = 1
+        self.xp         = 0
+        self.is_boss    = is_boss
+        self.sprite_key = sprite_key   # None → fallback retângulo colorido
 
     def is_alive(self):
         return self.hp > 0
@@ -39,8 +45,8 @@ class Character:
 
     def level_up(self):
         self.level += 1
-        self.max_hp += HP_LEVEL_INCREMENT
-        self.damage += DAMAGE_LEVEL_INCREMENT
+        self.max_hp  += HP_LEVEL_INCREMENT
+        self.damage  += DAMAGE_LEVEL_INCREMENT
         self.defense += DEFENSE_LEVEL_INCREMENT
-        self.hp = self.max_hp
+        self.hp       = self.max_hp
         print(f"{self.name} subiu para o nível {self.level}!")
