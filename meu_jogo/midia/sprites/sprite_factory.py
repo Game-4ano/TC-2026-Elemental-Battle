@@ -5,18 +5,17 @@ Gera sprites de pixel art (pygame.Surface) programaticamente.
 Nenhum arquivo de imagem externo é necessário.
 
 USO:
-    from meu_jogo.midia.sprites.sprite_factory import get_sprite
+    from meu_jogo.midia.sprites.sprite_factory import get_sprite, get_animation
 
-    surface = get_sprite("slime", scale=4)   # 16x16 escalado 4x = 64x64
-    surface = get_sprite("hero",  scale=4)
+    # Sprite estático
+    surface = get_sprite("slime", scale=4)
+
+    # Lista de frames para animação
+    frames = get_animation("hero_walk", scale=4)
 
 CONVENÇÃO DE CARACTERES NAS MATRIZES:
     '.' → transparente
     Qualquer outra letra → índice na paleta de cores do personagem
-
-Cada personagem tem:
-    - PIXELS  : lista de strings (matriz do sprite 16x16)
-    - PALETTE : dict  letra → (R, G, B)  ou  (R, G, B, A)
 """
 
 import pygame
@@ -27,16 +26,10 @@ import pygame
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _build_surface(pixels: list[str], palette: dict, scale: int = 4) -> pygame.Surface:
-    """
-    Constrói uma pygame.Surface a partir de uma matriz de pixels e uma paleta.
-    Se scale > 1, aplica pygame.transform.scale para o efeito pixel art "gordinho".
-    """
     h = len(pixels)
     w = max(len(row) for row in pixels)
-
     surf = pygame.Surface((w, h), pygame.SRCALPHA)
     surf.fill((0, 0, 0, 0))
-
     for y, row in enumerate(pixels):
         for x, ch in enumerate(row):
             if ch == '.':
@@ -44,62 +37,133 @@ def _build_surface(pixels: list[str], palette: dict, scale: int = 4) -> pygame.S
             color = palette.get(ch)
             if color:
                 surf.set_at((x, y), color)
-
     if scale > 1:
         surf = pygame.transform.scale(surf, (w * scale, h * scale))
-
     return surf
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  HERÓI  (elemento: Fogo)
+#  PALETA COMPARTILHADA DO HERÓI
 # ─────────────────────────────────────────────────────────────────────────────
 
 _HERO_PALETTE = {
     'S': (220, 180, 130),  # pele
-    'H': ( 60,  40, 120),  # roupa (azul escuro)
-    'h': ( 90,  70, 160),  # roupa clara
+    'H': ( 60,  40, 120),  # roupa azul escuro
+    'h': ( 90,  70, 160),  # roupa azul claro
     'B': ( 40,  25,  80),  # contorno roupa
-    'C': (200, 100,  30),  # cabelo laranja (fogo)
+    'C': (200, 100,  30),  # cabelo laranja
     'c': (240, 150,  50),  # cabelo claro
     'E': ( 30,  30,  30),  # olhos / contorno
     'W': (255, 255, 255),  # branco dos olhos
     'b': ( 80,  50,  20),  # bota
-    'G': (200,  60,  40),  # detalhe vermelho (emblema fogo)
-    'g': (240, 120,  60),  # detalhe laranja claro
+    'G': (200,  60,  40),  # emblema fogo
+    'g': (240, 120,  60),  # emblema laranja claro
 }
 
-_HERO_PIXELS = [
-    "....cCCCCc....",   # 00
-    "...cCCCCCCc...",   # 01
-    "...CCCCCCC....",   # 02
-    "...SSSSSSS....",   # 03  cabeça
-    "..ESSWSWSE...",    # 04  olhos
-    "...SSSSSSS....",   # 05
-    "...SEEEEEES...",   # 06  boca
-    "..BHHGGHHHB..",    # 07  ombros/tronco
-    "..BhhhGGhhHB.",    # 08
-    "..BHHhhhHHHB.",    # 09
-    "..BHH...HHHB.",    # 10  cintura
-    "...HH...HHH..",    # 11
-    "..bHH...HHbb.",    # 12  pernas
-    "..bHH...HHbb.",    # 13
-    "..bbb...bbbb.",    # 14  botas
-    "..bbb...bbbb.",    # 15
+# ─────────────────────────────────────────────────────────────────────────────
+#  HERÓI — frame IDLE (parado)
+# ─────────────────────────────────────────────────────────────────────────────
+
+_HERO_IDLE = [
+    "....cCCCCc....",
+    "...cCCCCCCc...",
+    "...CCCCCCC....",
+    "...SSSSSSS....",
+    "..ESSWSWSE...",
+    "...SSSSSSS....",
+    "...SEEEEEES...",
+    "..BHHGGHHHB..",
+    "..BhhhGGhhHB.",
+    "..BHHhhhHHHB.",
+    "..BHH...HHHB.",
+    "...HH...HHH..",
+    "..bHH...HHbb.",
+    "..bHH...HHbb.",
+    "..bbb...bbbb.",
+    "..bbb...bbbb.",
 ]
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  SLIME  (elemento: Água/Grama)
+#  HERÓI — frame WALK-A (perna esquerda à frente)
+# ─────────────────────────────────────────────────────────────────────────────
+
+_HERO_WALK_A = [
+    "....cCCCCc....",
+    "...cCCCCCCc...",
+    "...CCCCCCC....",
+    "...SSSSSSS....",
+    "..ESSWSWSE...",
+    "...SSSSSSS....",
+    "...SEEEEEES...",
+    "..BHHGGHHHB..",
+    "..BhhhGGhhHB.",
+    "..BHHhhhHHHB.",
+    "..BHH...HHHB.",
+    "...HH...HHH..",
+    "..bHHb..HH...",   # perna esq à frente, dir atrás
+    "..bHHbb.HH...",
+    "..bbbb..HHb..",
+    ".......bbbbb.",
+]
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  HERÓI — frame WALK-B (perna direita à frente)
+# ─────────────────────────────────────────────────────────────────────────────
+
+_HERO_WALK_B = [
+    "....cCCCCc....",
+    "...cCCCCCCc...",
+    "...CCCCCCC....",
+    "...SSSSSSS....",
+    "..ESSWSWSE...",
+    "...SSSSSSS....",
+    "...SEEEEEES...",
+    "..BHHGGHHHB..",
+    "..BhhhGGhhHB.",
+    "..BHHhhhHHHB.",
+    "..BHH...HHHB.",
+    "...HH...HHH..",
+    "...HH..bHHb..",   # perna dir à frente, esq atrás
+    "...HH.bbHHbb.",
+    "..bHH..bbbb..",
+    ".bbbbb.......",
+]
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  HERÓI — frame WALK-C (levemente agachado, transição)
+# ─────────────────────────────────────────────────────────────────────────────
+
+_HERO_WALK_C = [
+    ".....cCCCCc...",
+    "....cCCCCCCc..",
+    "....CCCCCCC...",
+    "....SSSSSSS...",
+    "...ESSWSWSE..",
+    "....SSSSSSS...",
+    "....SEEEEEES.",
+    "...BHHGGHHHB.",
+    "...BhhhGGhhHB",
+    "...BHHhhhHHHB",
+    "...BHH...HHHB",
+    "....HH...HHH.",
+    "...bHH...HHbb",   # pernas levemente abertas
+    "..bbHH...HHbb",
+    "..bbb.....bbb",
+    "..bbb.....bbb",
+]
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  SLIME
 # ─────────────────────────────────────────────────────────────────────────────
 
 _SLIME_PALETTE = {
-    'G': ( 60, 200,  80),  # verde corpo
-    'g': (100, 230, 110),  # verde claro (brilho)
-    'd': ( 30, 120,  50),  # verde escuro (sombra)
-    'W': (255, 255, 255),  # branco olho
-    'E': ( 20,  20,  20),  # pupila
-    'B': ( 20,  80,  30),  # contorno
-    'H': (180, 255, 180),  # reflexo topo
+    'G': ( 60, 200,  80),
+    'g': (100, 230, 110),
+    'd': ( 30, 120,  50),
+    'W': (255, 255, 255),
+    'E': ( 20,  20,  20),
+    'B': ( 20,  80,  30),
+    'H': (180, 255, 180),
 }
 
 _SLIME_PIXELS = [
@@ -113,7 +177,7 @@ _SLIME_PIXELS = [
     "BGgggWEEEEWggggB",
     "BGgggggggggggggB",
     "BGdddgggggggdddB",
-    ".BddddgggggddddB",  # 10
+    ".BddddgggggddddB",
     "..BdddgggggdddB.",
     "...BBdddddddBB..",
     ".....BBBBBBB....",
@@ -122,17 +186,17 @@ _SLIME_PIXELS = [
 ]
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  EMBER SPRITE  (elemento: Fogo)
+#  EMBER SPRITE  (Fogo)
 # ─────────────────────────────────────────────────────────────────────────────
 
 _EMBER_PALETTE = {
-    'R': (220,  60,  20),  # vermelho fogo
-    'r': (255, 120,  40),  # laranja claro
-    'Y': (255, 220,  60),  # amarelo centro
-    'y': (255, 240, 140),  # amarelo brilho
-    'E': ( 20,  20,  20),  # olhos
+    'R': (220,  60,  20),
+    'r': (255, 120,  40),
+    'Y': (255, 220,  60),
+    'y': (255, 240, 140),
+    'E': ( 20,  20,  20),
     'W': (255, 255, 255),
-    'B': (120,  20,   0),  # contorno escuro
+    'B': (120,  20,   0),
     'k': ( 40,  10,   0),
 }
 
@@ -156,7 +220,7 @@ _EMBER_PIXELS = [
 ]
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  LEAF WISP  (elemento: Grama)
+#  LEAF WISP  (Grama)
 # ─────────────────────────────────────────────────────────────────────────────
 
 _LEAF_PALETTE = {
@@ -191,20 +255,20 @@ _LEAF_PIXELS = [
 ]
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  GOBLIN  (elemento: Grama, médio)
+#  GOBLIN  (Grama, médio)
 # ─────────────────────────────────────────────────────────────────────────────
 
 _GOBLIN_PALETTE = {
-    'S': ( 90, 160,  60),  # pele verde
-    's': (120, 190,  80),  # pele clara
+    'S': ( 90, 160,  60),
+    's': (120, 190,  80),
     'E': ( 20,  20,  20),
     'W': (255, 255, 255),
-    'R': (200,  40,  40),  # roupa vermelha
+    'R': (200,  40,  40),
     'r': (160,  30,  30),
-    'B': ( 30,  70,  20),  # contorno
-    'T': (180, 140,  60),  # presas/dentes
-    'b': ( 50,  30,  10),  # bota
-    'H': ( 60,  40,  10),  # cabelo
+    'B': ( 30,  70,  20),
+    'T': (180, 140,  60),
+    'b': ( 50,  30,  10),
+    'H': ( 60,  40,  10),
 }
 
 _GOBLIN_PIXELS = [
@@ -214,7 +278,7 @@ _GOBLIN_PIXELS = [
     "..BSssEsssEssB..",
     "..BSssWsssWssB..",
     "..BSssssssssssB.",
-    "...BTTssssTTB...",  # presas
+    "...BTTssssTTB...",
     "....BRRRRRRB....",
     "...BRRrRRrRRB...",
     "...BRRRRRRRrB...",
@@ -227,17 +291,17 @@ _GOBLIN_PIXELS = [
 ]
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  FLAME HOUND  (elemento: Fogo, médio)
+#  FLAME HOUND  (Fogo, médio)
 # ─────────────────────────────────────────────────────────────────────────────
 
 _FLAME_HOUND_PALETTE = {
-    'D': (180,  60,  10),  # corpo laranja escuro
-    'd': (220,  90,  30),  # corpo laranja
-    'O': (255, 140,  40),  # laranja claro
-    'Y': (255, 220,  60),  # amarelo (chamas)
+    'D': (180,  60,  10),
+    'd': (220,  90,  30),
+    'O': (255, 140,  40),
+    'Y': (255, 220,  60),
     'y': (255, 240, 130),
     'E': ( 20,  20,  20),
-    'N': (100,  30,   5),  # focinho escuro
+    'N': (100,  30,   5),
     'B': ( 80,  20,   0),
     'W': (255, 255, 255),
     'K': ( 20,  10,   0),
@@ -263,20 +327,91 @@ _FLAME_HOUND_PIXELS = [
 ]
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  WOLF  (elemento: Grama, forte)
+#  STORM RAVEN  (Elétrico, médio)
+# ─────────────────────────────────────────────────────────────────────────────
+
+_RAVEN_PALETTE = {
+    'D': ( 30,  30,  40),
+    'd': ( 50,  50,  70),
+    'B': ( 10,  10,  20),
+    'Y': (220, 200,  30),
+    'y': (255, 240, 100),
+    'E': (255, 240,  50),
+    'W': (200, 200, 220),
+    'w': (160, 160, 190),
+    'G': ( 80,  80, 100),
+}
+
+_RAVEN_PIXELS = [
+    "....yYYYYYy.....",
+    "...yYyyyyYYy....",
+    "..DDDDddddDDD...",
+    ".DDDdGGGGGdDDD..",
+    "DDDdGGEEEGGdDDD.",
+    "DDdGGEEEEEGGdDDD",
+    "DDdGGGEEEGGGdDDD",
+    "DDDdGGGGGGGdDDD.",
+    ".DDDdddddddDDD..",
+    "..WDDDDDDDDDw...",
+    ".WwDDDyYydDDwW..",
+    "WwwDDDyYyDDDwwW.",
+    ".WwwDDDDDDDwwW..",
+    "..WwwDDD.DwwW...",
+    "....WwD...WwW...",
+    ".....W.....W....",
+]
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  TIDE CRAWLER  (Água, médio)
+# ─────────────────────────────────────────────────────────────────────────────
+
+_TIDE_PALETTE = {
+    'B': ( 20,  60, 140),
+    'b': ( 40,  90, 180),
+    'C': ( 60, 140, 220),
+    'c': (100, 180, 240),
+    'T': (180, 230, 255),
+    'E': (200, 240, 255),
+    'e': ( 10,  30,  80),
+    'G': ( 30, 200, 160),
+    'g': ( 60, 230, 190),
+    'K': ( 10,  20,  50),
+}
+
+_TIDE_PIXELS = [
+    "....KBBBBBBk....",
+    "...KBbCCCCbBK...",
+    "..KBbCcccccBbK..",
+    ".KBbCcTEeTcCbBK.",
+    "KBbCcTEeeeETcCbK",
+    "KBbCcTEeeeETcCbK",
+    "KBbCcCcccccCcCbK",
+    "KBbCGCcccccCGCbK",
+    "KBbCGgCcccCgGCbK",
+    ".KBbCGgggggGCbK.",
+    "..KBbCGgGgGCbK..",
+    "...KBbK...KbBK..",
+    "...KBK.....KBK..",
+    "...BK.......KB..",
+    "..KK.........KK.",
+    "................",
+]
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  WOLF  (Grama, forte)
 # ─────────────────────────────────────────────────────────────────────────────
 
 _WOLF_PALETTE = {
-    'W': (190, 190, 200),  # pelo cinza claro
-    'w': (140, 140, 155),  # pelo cinza médio
-    'D': ( 70,  70,  85),  # pelo escuro
+    'W': (190, 190, 200),
+    'w': (140, 140, 155),
+    'D': ( 70,  70,  85),
     'd': ( 40,  40,  55),
     'E': ( 20,  20,  20),
-    'N': ( 50,  30,  30),  # focinho
-    'T': (230, 230, 240),  # barriga
-    'G': ( 60, 180,  60),  # olhos verdes (elemento grama)
+    'N': ( 50,  30,  30),
+    'T': (230, 230, 240),
+    'G': ( 60, 180,  60),
     'B': ( 20,  20,  30),
-    'R': (200,  30,  30),  # língua
+    'R': (200,  30,  30),
 }
 
 _WOLF_PIXELS = [
@@ -299,23 +434,23 @@ _WOLF_PIXELS = [
 ]
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  FOREST GUARDIAN  (boss, elemento: Grama)
+#  FOREST GUARDIAN  (boss, Grama)
 # ─────────────────────────────────────────────────────────────────────────────
 
 _GUARDIAN_PALETTE = {
-    'G': ( 30, 120,  40),  # verde escuro madeira
+    'G': ( 30, 120,  40),
     'g': ( 50, 160,  60),
-    'L': ( 80, 200,  80),  # folhas
+    'L': ( 80, 200,  80),
     'l': (130, 230, 110),
-    'y': (200, 220,  50),  # brilho mágico
+    'y': (200, 220,  50),
     'Y': (240, 255, 100),
-    'B': ( 15,  60,  20),  # contorno
-    'E': (200, 255,  50),  # olhos brilhantes
+    'B': ( 15,  60,  20),
+    'E': (200, 255,  50),
     'e': (100, 200,  30),
-    'W': (220, 240, 180),  # face/tronco claro
-    'R': (180,  50,  30),  # runas (detalhes vermelhos)
+    'W': (220, 240, 180),
+    'R': (180,  50,  30),
     'r': (220,  80,  50),
-    'T': (120,  80,  40),  # tronco/madeira
+    'T': (120,  80,  40),
     't': (160, 110,  60),
 }
 
@@ -339,20 +474,20 @@ _GUARDIAN_PIXELS = [
 ]
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  VOID EMPEROR  (boss final, elemento: Dark)
+#  VOID EMPEROR  (boss final, Dark)
 # ─────────────────────────────────────────────────────────────────────────────
 
 _VOID_PALETTE = {
-    'P': ( 50,  20,  80),  # roxo escuro corpo
-    'p': ( 80,  40, 120),  # roxo médio
-    'V': (120,  60, 180),  # violeta
-    'v': (180, 100, 240),  # violeta claro
-    'E': (200, 150, 255),  # olhos roxo brilhante
+    'P': ( 50,  20,  80),
+    'p': ( 80,  40, 120),
+    'V': (120,  60, 180),
+    'v': (180, 100, 240),
+    'E': (200, 150, 255),
     'e': (240, 200, 255),
-    'B': ( 15,   5,  30),  # contorno muito escuro
-    'Y': (220, 180, 255),  # brilho aura
+    'B': ( 15,   5,  30),
+    'Y': (220, 180, 255),
     'y': (255, 220, 255),
-    'R': (180,  20, 200),  # runas magenta
+    'R': (180,  20, 200),
     'r': (220,  60, 240),
     'W': (240, 220, 255),
     'K': ( 10,   0,  20),
@@ -377,125 +512,80 @@ _VOID_PIXELS = [
     "..B...........B.",
 ]
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  STORM RAVEN  (elemento: Elétrico, médio)
-# ─────────────────────────────────────────────────────────────────────────────
-
-_RAVEN_PALETTE = {
-    'D': ( 30,  30,  40),  # preto azulado
-    'd': ( 50,  50,  70),
-    'B': ( 10,  10,  20),
-    'Y': (220, 200,  30),  # amarelo elétrico
-    'y': (255, 240, 100),
-    'E': (255, 240,  50),  # olhos elétricos
-    'W': (200, 200, 220),  # penas brancas
-    'w': (160, 160, 190),
-    'G': ( 80,  80, 100),
-}
-
-_RAVEN_PIXELS = [
-    "....yYYYYYy.....",
-    "...yYyyyy Yy....",
-    "..DDDDddddDDD...",
-    ".DDDdGGGGGdDDD..",
-    "DDDdGGEEEGGdDDD.",
-    "DDdGGEEEEEGGdDDD",
-    "DDdGGGEEEGGGdDDD",
-    "DDDdGGGGGGGdDDD.",
-    ".DDDdddddddDDD..",
-    "..WDDDDDDDDDw...",
-    ".WwDDDyYydDDwW..",
-    "WwwDDDyYyDDDwwW.",
-    ".WwwDDDDDDDwwW..",
-    "..WwwDDD.DwwW...",
-    "....WwD...WwW...",
-    ".....W.....W....",
-]
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  TIDE CRAWLER  (elemento: Água, médio)
-# ─────────────────────────────────────────────────────────────────────────────
-
-_TIDE_PALETTE = {
-    'B': ( 20,  60, 140),  # azul escuro
-    'b': ( 40,  90, 180),
-    'C': ( 60, 140, 220),  # azul claro
-    'c': (100, 180, 240),
-    'T': (180, 230, 255),  # brilho água
-    'E': (200, 240, 255),  # olhos
-    'e': ( 10,  30,  80),  # pupila
-    'G': ( 30, 200, 160),  # verde água
-    'g': ( 60, 230, 190),
-    'K': ( 10,  20,  50),
-}
-
-_TIDE_PIXELS = [
-    "....KBBBBBBk....",
-    "...KBbCCCCbBK...",
-    "..KBbCcccccBbK..",
-    ".KBbCcTEeTcCbBK.",
-    "KBbCcTEeeeETcCbK",
-    "KBbCcTEeeeETcCbK",
-    "KBbCcCcccccCcCbK",
-    "KBbCGCcccccCGCbK",
-    "KBbCGgCcccCgGCbK",
-    ".KBbCGgggggGCbK.",
-    "..KBbCGgGgGCbK..",
-    "...KBbK...KbBK..",
-    "...KBK.....KBK..",
-    "...BK.......KB..",
-    "..KK.........KK.",
-    "................",
-]
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-#  REGISTRO  –  sprite_key → (pixels, palette)
+#  REGISTRO — sprite_key → (pixels, palette)
 # ─────────────────────────────────────────────────────────────────────────────
 
 _SPRITE_DATA: dict[str, tuple[list[str], dict]] = {
-    "hero":           (_HERO_PIXELS,        _HERO_PALETTE),
-    "slime":          (_SLIME_PIXELS,       _SLIME_PALETTE),
-    "ember_sprite":   (_EMBER_PIXELS,       _EMBER_PALETTE),
-    "leaf_wisp":      (_LEAF_PIXELS,        _LEAF_PALETTE),
-    "goblin":         (_GOBLIN_PIXELS,      _GOBLIN_PALETTE),
-    "flame_hound":    (_FLAME_HOUND_PIXELS, _FLAME_HOUND_PALETTE),
-    "storm_raven":    (_RAVEN_PIXELS,       _RAVEN_PALETTE),
-    "tide_crawler":   (_TIDE_PIXELS,        _TIDE_PALETTE),
-    "wolf":           (_WOLF_PIXELS,        _WOLF_PALETTE),
-    "forest_guardian":(_GUARDIAN_PIXELS,    _GUARDIAN_PALETTE),
-    "void_emperor":   (_VOID_PIXELS,        _VOID_PALETTE),
+    "hero":            (_HERO_IDLE,         _HERO_PALETTE),
+    "slime":           (_SLIME_PIXELS,      _SLIME_PALETTE),
+    "ember_sprite":    (_EMBER_PIXELS,      _EMBER_PALETTE),
+    "leaf_wisp":       (_LEAF_PIXELS,       _LEAF_PALETTE),
+    "goblin":          (_GOBLIN_PIXELS,     _GOBLIN_PALETTE),
+    "flame_hound":     (_FLAME_HOUND_PIXELS,_FLAME_HOUND_PALETTE),
+    "storm_raven":     (_RAVEN_PIXELS,      _RAVEN_PALETTE),
+    "tide_crawler":    (_TIDE_PIXELS,       _TIDE_PALETTE),
+    "wolf":            (_WOLF_PIXELS,       _WOLF_PALETTE),
+    "forest_guardian": (_GUARDIAN_PIXELS,   _GUARDIAN_PALETTE),
+    "void_emperor":    (_VOID_PIXELS,       _VOID_PALETTE),
 }
 
-# Cache para não recriar surfaces desnecessariamente
+# Animações: chave → lista ordenada de (pixels, palette)
+# O AnimatedSprite vai ciclar por esses frames automaticamente.
+_ANIMATION_DATA: dict[str, list[tuple[list[str], dict]]] = {
+    # 4 frames: idle → passo-A → idle → passo-B
+    "hero_walk": [
+        (_HERO_IDLE,   _HERO_PALETTE),
+        (_HERO_WALK_A, _HERO_PALETTE),
+        (_HERO_WALK_C, _HERO_PALETTE),   # transição agachado
+        (_HERO_WALK_B, _HERO_PALETTE),
+        (_HERO_WALK_C, _HERO_PALETTE),   # transição agachado
+    ],
+    "hero_idle": [
+        (_HERO_IDLE, _HERO_PALETTE),
+    ],
+}
+
+# Cache sprites estáticos
 _cache: dict[tuple[str, int], pygame.Surface] = {}
+# Cache animações (lista de surfaces já escaladas)
+_anim_cache: dict[tuple[str, int], list[pygame.Surface]] = {}
 
 
 def get_sprite(sprite_key: str, scale: int = 4) -> pygame.Surface | None:
-    """
-    Retorna a pygame.Surface do sprite escalada.
-
-    Args:
-        sprite_key : chave do personagem (ex: "slime", "hero")
-        scale      : fator de escala — 4 transforma 16x16 em 64x64
-
-    Returns:
-        pygame.Surface com transparência, ou None se a chave não existir.
-    """
+    """Retorna a Surface estática do sprite, ou None se a chave não existir."""
     cache_key = (sprite_key, scale)
     if cache_key in _cache:
         return _cache[cache_key]
-
     data = _SPRITE_DATA.get(sprite_key)
     if data is None:
         return None
-
     pixels, palette = data
     surf = _build_surface(pixels, palette, scale)
     _cache[cache_key] = surf
     return surf
 
 
+def get_animation(anim_key: str, scale: int = 4) -> list[pygame.Surface]:
+    """
+    Retorna a lista de Surfaces que compõem uma animação.
+    Retorna lista vazia se a chave não existir.
+    """
+    cache_key = (anim_key, scale)
+    if cache_key in _anim_cache:
+        return _anim_cache[cache_key]
+    frames_data = _ANIMATION_DATA.get(anim_key)
+    if not frames_data:
+        return []
+    frames = [_build_surface(px, pal, scale) for px, pal in frames_data]
+    _anim_cache[cache_key] = frames
+    return frames
+
+
 def list_sprites() -> list[str]:
-    """Retorna lista de todas as chaves de sprites disponíveis."""
     return list(_SPRITE_DATA.keys())
+
+
+def list_animations() -> list[str]:
+    return list(_ANIMATION_DATA.keys())
