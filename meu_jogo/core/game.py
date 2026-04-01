@@ -1,51 +1,39 @@
-"""
-Controla fluxo geral do jogo.
-"""
-
-from meu_jogo.core.battle import Battle
-from meu_jogo.entidades.ai_entidade import BasicAI  
-from meu_jogo.core.game_state import GameState
-from meu_jogo.core.config import DEFAULT_XP_REWARD, BOSS_XP_REWARD
-
+import pygame
+from entidades.player import Player
+from cenas.mapa import Mapa
 
 class Game:
-    """Gerencia progressão, mapas e estados."""
+    def __init__(self):
+        pygame.init()
 
-    def __init__(self, player, maps):
-        self.player = player
-        self.maps = maps
-        self.current_map_index = 0
-        self.current_enemy_index = 0
-        self.state = GameState.MENU
+        self.tela = pygame.display.set_mode((1920,1080))
+        pygame.display.set_caption("Elemental Battle")
 
-    def start_game(self):
-        self.state = GameState.BATTLE
-        return self._start_next_battle()
+        mapa_img = pygame.image.load("meu_jogo/assets/mapa/mapa.png")
+        sprite_sheet = pygame.image.load("meu_jogo/assets/sprite/player.png")
 
-    def _start_next_battle(self):
-        current_map = self.maps[self.current_map_index]
+        sprite_sheet = pygame.transform.scale(sprite_sheet, (128, 32))
 
-        if self.current_enemy_index < len(current_map.enemies):
-            enemy = current_map.enemies[self.current_enemy_index]
-            self.current_enemy_index += 1
-        else:
-            enemy = current_map.boss
+        self.mapa = Mapa(mapa_img)
+        self.player = Player(100, 100, sprite_sheet)
 
-        return Battle(self.player, enemy, enemy_ai=BasicAI())
+        self.rodando = True
 
-    def handle_victory(self, enemy):
-        if enemy.is_boss:
-            self._complete_map()
-        else:
-            self.player.gain_xp(DEFAULT_XP_REWARD)
+    def run(self):
+        while self.rodando:
+            pygame.time.delay(50)
 
-    def _complete_map(self):
-        self.player.gain_xp(BOSS_XP_REWARD)
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.rodando = False
 
-        self.current_map_index += 1
-        self.current_enemy_index = 0
+            teclas = pygame.key.get_pressed()
 
-        if self.current_map_index >= len(self.maps):
-            self.state = GameState.GAME_COMPLETE
-        else:
-            self.state = GameState.MAP_COMPLETE
+            self.player.mover(teclas)
+
+            self.mapa.desenhar(self.tela)
+            self.player.desenhar(self.tela)
+
+            pygame.display.update()
+
+        pygame.quit()
