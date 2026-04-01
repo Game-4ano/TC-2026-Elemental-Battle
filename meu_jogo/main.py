@@ -9,7 +9,6 @@ from meu_jogo.data.maps_data import maps, ALL_MAP_DATA
 def main():
     pygame.init()
 
-    # Tenta carregar o mapa.jpg como fundo
     try:
         bg_image = pygame.image.load("meu_jogo/mapa.jpg").convert()
     except Exception:
@@ -18,7 +17,6 @@ def main():
         except Exception:
             bg_image = None
 
-    # sprite_key="hero" → sprite_factory vai buscar o design do herói
     player = Character(
         "Hero", 120, 20, 5, "Fire", "Water",
         sprite_key="hero",
@@ -27,6 +25,19 @@ def main():
     game        = Game(player, maps)
     map_manager = MapManager("MUNDO_ABERTO", ALL_MAP_DATA, bg_image=bg_image)
     manager     = GameManager(game, map_manager, player)
+
+    # Registra o callback de level up no herói.
+    # Quando player.level_up() for chamado, isso exibe a notificação na tela.
+    def _on_level_up(character):
+        manager.notificacoes.adicionar(
+            f"★  {character.name} subiu para o nível {character.level}!  ★",
+            cor=(255, 220, 50),
+            duracao=3.0,
+            destaque=True,
+        )
+
+    player.on_level_up = _on_level_up
+
     manager.run()
 
 
