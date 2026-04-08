@@ -1,65 +1,175 @@
-import math
 import pygame
 
-from meu_jogo.cenas.base_cenas import BaseScene
-from meu_jogo.cenas.battle_scene import BattleScene
-from meu_jogo.core.config import (
-    SCREEN_WIDTH,
-    SCREEN_HEIGHT,
-    GREEN,
-    DARK_GREEN,
-    BROWN,
-    YELLOW,
-    BLACK,
-    WHITE,
-)
+from meu_jogo.core.game_scene import GameScene
+from meu_jogo.core.config import SCREEN_WIDTH, SCREEN_HEIGHT, WHITE, TILE_SIZE
+from meu_jogo.core.map import PortalTile
+from meu_jogo.core.battle import Battle
+from meu_jogo.entidades.ai_entidade import BasicAI
+from meu_jogo.midia.sprites.animated_sprite import AnimatedSprite
 
 
-class CampoDeTreinoScene(BaseScene):
+ROOM_BG = {
+    "SALA_BATALHA_AGUA":     (8,   20,  70),
+    "SALA_BATALHA_ELETRICA": (40,  38,   5),
+    "SALA_BATALHA_VENTO":    (20,  50,  80),
+    "SALA_BATALHA_FOGO":     (70,  10,   0),
+}
+
+# 16×16 × 2 = 32×32 px  (= 1 tile)
+_MAP_SPRITE_SCALE = 2
+
+
+class CampoDeTreinoScene(GameScene):
+
     def __init__(self, manager):
         super().__init__(manager)
-        self.font = pygame.font.SysFont(None, 24)
-        self.big_font = pygame.font.SysFont(None, 30)
+        self.font     = pygame.font.SysFont(None, 22)
 
-        self.center_x = SCREEN_WIDTH // 2
-        self.center_y = SCREEN_HEIGHT // 2
-        self.tree_radius = 210
+        self.player_grid_x = 7
+        self.player_grid_y = 7
 
-    def handle_event(self, event):
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_SPACE:
-                battle = self.manager.game.start_game()
-                self.manager.scene_manager.change_scene(BattleScene(self.manager, battle))
+        self._facing_left = False
 
-    def update(self, dt):
+        # Cooldown de movimento: impede andar 60 tiles/s
+        self._move_cooldown     = 0.18   # segundos entre passos
+        self._move_timer        = 0.0
+
+        self._hero_anim = AnimatedSprite(
+            "hero_walk",
+            scale=_MAP_SPRITE_SCALE,
+            fps=8.0,
+        )
+
+    # -----------------------------------------------------------------------
+    def handle_event(self, event: pygame.event.Event):
+        # Eventos de portal/ação ainda tratados aqui
         pass
 
-    def render(self, screen):
-        screen.fill(GREEN)
+    def _try_move(self, dx, dy):
+        nx = self.player_grid_x + dx
+        ny = self.player_grid_y + dy
+        cmap = self.manager.map_manager.current_map
+        if not cmap.is_walkable(nx, ny):
+            return
+        self.player_grid_x, self.player_grid_y = nx, ny
+        tile = cmap.get_tile_at(nx, ny)
+        if isinstance(tile, PortalTile):
+            self._enter_portal(tile)
+        elif tile:
+            tile.on_step(self.manager.player, self.manager.map_manager)
 
-        # árvores em círculo
-        for i in range(14):
-            angle = (2 * math.pi / 14) * i
-            x = int(self.center_x + math.cos(angle) * self.tree_radius)
-            y = int(self.center_y + math.sin(angle) * self.tree_radius)
+    def _enter_portal(self, tile: PortalTile):
+        from meu_jogo.data.characters_data import ROOM_BOSS
+        from meu_jogo.cenas.battle_scene import BattleScene
 
-            pygame.draw.circle(screen, BROWN, (x, y + 10), 10)
-            pygame.draw.circle(screen, DARK_GREEN, (x, y), 22)
+        dest = tile.destination_map_name
 
-        # espantalho
-        scare_x = self.center_x
-        scare_y = self.center_y
+        if dest in ROOM_BOSS:
+            boss    = ROOM_BOSS[dest]
+            boss.hp = boss.max_hp
+            player  = self.manager.game.player
+            if not player.is_alive():
+                player.hp = player.max_hp
 
-        pygame.draw.circle(screen, YELLOW, (scare_x, scare_y - 35), 14)
-        pygame.draw.line(screen, BROWN, (scare_x, scare_y - 20), (scare_x, scare_y + 35), 4)
-        pygame.draw.line(screen, BROWN, (scare_x - 25, scare_y), (scare_x + 25, scare_y), 4)
-        pygame.draw.line(screen, BROWN, (scare_x, scare_y + 35), (scare_x - 15, scare_y + 60), 4)
-        pygame.draw.line(screen, BROWN, (scare_x, scare_y + 35), (scare_x + 15, scare_y + 60), 4)
+            battle = Battle(player, boss, BasicAI())
+            bg     = ROOM_BG.get(dest, (15, 15, 30))
+            bg_img = self.manager.map_manager.bg_image
 
-        title = self.big_font.render("Campo de Treino", True, BLACK)
-        tip1 = self.font.render("Pressione ESPAÇO para iniciar a batalha", True, WHITE)
-        tip2 = self.font.render("Primeira criatura: elemento Fogo", True, WHITE)
+            self.manager.scene_manager.change_scene(
+                BattleScene(self.manager, battle, bg_color=bg, bg_image=bg_img)
+            )
+        else:
+            self.manager.map_manager.request_map_change(
+                dest, tile.spawn_x, tile.spawn_y
+            )
 
-        screen.blit(title, (SCREEN_WIDTH // 2 - title.get_width() // 2, 30))
-        screen.blit(tip1, (SCREEN_WIDTH // 2 - tip1.get_width() // 2, 430))
-        screen.blit(tip2, (SCREEN_WIDTH // 2 - tip2.get_width() // 2, 455))
+    # -----------------------------------------------------------------------
+    def update(self, dt: float):
+        keys = pygame.key.get_pressed()
+
+        dx, dy = 0, 0
+        moving = False
+
+        if keys[pygame.K_LEFT]:
+            dx = -1
+            self._facing_left = True
+            moving = True
+        elif keys[pygame.K_RIGHT]:
+            dx = 1
+            self._facing_left = False
+            moving = True
+        elif keys[pygame.K_UP]:
+            dy = -1
+            moving = True
+        elif keys[pygame.K_DOWN]:
+            dy = 1
+            moving = True
+
+        # Cooldown: só move quando o timer chegar a zero
+        if moving:
+            self._move_timer -= dt
+            if self._move_timer <= 0:
+                self._try_move(dx, dy)
+                self._move_timer = self._move_cooldown
+        else:
+            # Zera o timer quando soltar a tecla para mover imediatamente
+            # ao pressionar de novo (sem esperar o cooldown anterior)
+            self._move_timer = 0.0
+
+        # Animação: roda enquanto se move, para quando parado
+        self._hero_anim.flipped = self._facing_left
+        if moving:
+            self._hero_anim.update(dt)
+        else:
+            self._hero_anim.reset()
+
+        # Câmera
+        px = self.player_grid_x * TILE_SIZE + TILE_SIZE // 2
+        py = self.player_grid_y * TILE_SIZE + TILE_SIZE // 2
+        self.manager.map_manager.current_map.update_camera(px, py)
+
+    # -----------------------------------------------------------------------
+    def draw(self, screen: pygame.Surface):
+        cmap = self.manager.map_manager.current_map
+        cmap.draw(screen)
+
+        sx = self.player_grid_x * TILE_SIZE - cmap.camera_offset_x
+        sy = self.player_grid_y * TILE_SIZE - cmap.camera_offset_y
+
+        sprite_w = self._hero_anim.width
+        sprite_h = self._hero_anim.height
+        draw_x   = sx + (TILE_SIZE - sprite_w) // 2
+        draw_y   = sy + (TILE_SIZE - sprite_h) // 2
+
+        # Sombra
+        shadow_surf = pygame.Surface((TILE_SIZE - 8, 6), pygame.SRCALPHA)
+        pygame.draw.ellipse(shadow_surf, (0, 0, 0, 100),
+            shadow_surf.get_rect())
+        screen.blit(shadow_surf, (sx + 4, sy + TILE_SIZE - 6))
+
+        # Sprite animado (fallback: retângulo)
+        if sprite_w > 0:
+            self._hero_anim.draw(screen, draw_x, draw_y)
+        else:
+            pygame.draw.rect(screen, (220, 70, 70),
+                (sx + 3, sy + 3, TILE_SIZE - 6, TILE_SIZE - 6),
+                border_radius=6)
+
+        # HUD
+        player = self.manager.game.player
+        hp_txt = self.font.render(
+            f"HP {player.hp}/{player.max_hp}  Lv.{player.level}", True, WHITE)
+        pygame.draw.rect(screen, (0, 0, 0),
+            (8, SCREEN_HEIGHT - 50, hp_txt.get_width() + 16, 28))
+        screen.blit(hp_txt, (16, SCREEN_HEIGHT - 46))
+
+        hint = self.font.render(
+            "Setas = mover  |  Portais coloridos = batalha",
+            True, (220, 220, 220))
+        pygame.draw.rect(screen, (0, 0, 0),
+            (0, SCREEN_HEIGHT - 22, SCREEN_WIDTH, 22))
+        screen.blit(hint,
+            (SCREEN_WIDTH // 2 - hint.get_width() // 2, SCREEN_HEIGHT - 20))
+
+    def render(self, screen: pygame.Surface):
+        self.draw(screen)

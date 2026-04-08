@@ -297,3 +297,10 @@ REGRAS GERAIS DO PROJETO
 8. testes guarda scripts de prototipagem.
 
 Seguir esta estrutura ajuda a manter o projeto organizado e facilita o desenvolvimento em equipe.
+
+---
+
+***Como Jogar:
+
+1. rode o comando "pip install pygame" no terminal para instalar a biblioteca necessária.
+2. rode o comando "python -m meu_jogo.main" no terminal para rodar o jogo.
