@@ -1,10 +1,16 @@
 import pygame
 import sys
 
-from meu_jogo.core.config import SCREEN_WIDTH, SCREEN_HEIGHT, TILE_SIZE
-from meu_jogo.core.map import MapManager
-from meu_jogo.data.maps_data import ALL_MAP_DATA
-from meu_jogo.entidades.character import Character
+try:
+    from meu_jogo.core.config import SCREEN_WIDTH, SCREEN_HEIGHT, TILE_SIZE
+    from meu_jogo.core.map import MapManager
+    from meu_jogo.data.maps_data import ALL_MAP_DATA
+    from meu_jogo.entidades.character import Character
+except ImportError:
+    from core.config import SCREEN_WIDTH, SCREEN_HEIGHT, TILE_SIZE
+    from core.map import MapManager
+    from data.maps_data import ALL_MAP_DATA
+    from entidades.character import Character
 
 # Inicializa o Pygame
 pygame.init()
