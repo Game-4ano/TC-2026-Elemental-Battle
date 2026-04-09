@@ -1,7 +1,7 @@
 """
 Constantes globais do jogo.
 """
-
+"mudando"
 # Configuração da janela
 SCREEN_WIDTH = 500
 SCREEN_HEIGHT = 500
