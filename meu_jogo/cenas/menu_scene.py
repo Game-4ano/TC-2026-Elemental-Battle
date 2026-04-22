@@ -159,6 +159,8 @@ class MenuScene(GameScene):
         # Posições dos 5 elementos em pentágono centrado na tela
         self._elem_pos = self._calcular_posicoes()
 
+        self.manager.audio.play_music("menu_theme", volume=0.45)
+
     # -----------------------------------------------------------------------
     def _calcular_posicoes(self):
         cx0 = SCREEN_WIDTH  // 2
@@ -209,6 +211,7 @@ class MenuScene(GameScene):
         player          = self.manager.game.player
         player.element  = elem["key"]
         player.weakness = elem["fraqueza"]
+        self.manager.audio.play_sfx("menu_select")
         self.manager.notificacoes.adicionar(
             f"Elemento escolhido: {elem['nome']}!",
             cor=elem["cor_clara"],

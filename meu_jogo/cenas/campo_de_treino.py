@@ -40,6 +40,8 @@ class CampoDeTreinoScene(GameScene):
             fps=8.0,
         )
 
+        self.manager.audio.play_music("overworld_theme", volume=0.40)
+
     # -----------------------------------------------------------------------
     def handle_event(self, event: pygame.event.Event):
         # Eventos de portal/ação ainda tratados aqui
@@ -52,6 +54,7 @@ class CampoDeTreinoScene(GameScene):
         if not cmap.is_walkable(nx, ny):
             return
         self.player_grid_x, self.player_grid_y = nx, ny
+        self.manager.audio.play_sfx("step", volume=0.35)
         tile = cmap.get_tile_at(nx, ny)
         if isinstance(tile, PortalTile):
             self._enter_portal(tile)
@@ -62,6 +65,7 @@ class CampoDeTreinoScene(GameScene):
         from meu_jogo.data.characters_data import ROOM_BOSS
         from meu_jogo.cenas.battle_scene import BattleScene
 
+        self.manager.audio.play_sfx("portal")
         dest = tile.destination_map_name
 
         if dest in ROOM_BOSS:
@@ -157,8 +161,11 @@ class CampoDeTreinoScene(GameScene):
 
         # HUD
         player = self.manager.game.player
+        total  = self.manager.score.get_total_score()
         hp_txt = self.font.render(
-            f"HP {player.hp}/{player.max_hp}  Lv.{player.level}", True, WHITE)
+            f"HP {player.hp}/{player.max_hp}  Lv.{player.level}"
+            f"   |   Pontos: {total}",
+            True, WHITE)
         pygame.draw.rect(screen, (0, 0, 0),
             (8, SCREEN_HEIGHT - 50, hp_txt.get_width() + 16, 28))
         screen.blit(hp_txt, (16, SCREEN_HEIGHT - 46))

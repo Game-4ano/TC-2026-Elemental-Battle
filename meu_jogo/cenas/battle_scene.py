@@ -6,6 +6,7 @@ from meu_jogo.core.game_scene import GameScene
 from meu_jogo.core.game_object import GameObject
 from meu_jogo.core.config import SCREEN_WIDTH, SCREEN_HEIGHT, WHITE, BLACK, GREEN, GRAY, RED
 from meu_jogo.core.game_state import GameState
+from meu_jogo.core.elements import element_advantage
 from meu_jogo.entidades.acoes import AttackAction
 from meu_jogo.midia.sprites.sprite_factory import get_sprite
 
@@ -226,7 +227,11 @@ class BattleScene(GameScene):
         self._enemy_turn_timer   = 0.0
         self._particles: list[dict] = []
         self.objects: list[GameObject] = []
+        self._last_summary: dict = {}
         self._load_characters()
+
+        self.manager.audio.play_music("battle_theme", volume=0.50)
+        self.manager.score.iniciar_batalha()
 
     # -----------------------------------------------------------------------
     def _load_characters(self):
@@ -239,23 +244,52 @@ class BattleScene(GameScene):
         self.objects = [self.player_obj, self.enemy_obj]
 
     # -----------------------------------------------------------------------
-    def _launch_projectile(self, attacker_obj, defender_obj):
-        # Projétil parte do centro do atacante
+    def _launch_projectile(self, attacker_obj, defender_obj,
+                           is_player_attack: bool = False):
         origin = attacker_obj.position + pygame.Vector2(
             CharacterObject.SIZE // 2, CharacterObject.SIZE // 2)
+
+        atk_elem      = attacker_obj.character.element
+        def_elem      = defender_obj.character.element
+        super_efetivo = element_advantage.get(atk_elem) == def_elem
+
+        self.manager.audio.play_sfx(f"attack_{atk_elem.lower()}")
 
         def on_hit():
             result = AttackAction().execute(
                 attacker_obj.character, defender_obj.character)
+            dano = result["damage"]
             defender_obj.take_hit()
-            self._spawn_impact(defender_obj.position,
-                               attacker_obj.character.element)
+            self._spawn_impact(defender_obj.position, atk_elem)
+            self.manager.audio.play_sfx("hit")
+
+            if is_player_attack:
+                # Combo e bônus elemental
+                nivel_combo = self.manager.score.increment_combo()
+                if nivel_combo >= 2:
+                    self.manager.notificacoes.adicionar(
+                        f"Combo x{nivel_combo}! +{nivel_combo * 25} pts",
+                        cor=(255, 200, 60),
+                        duracao=1.2,
+                    )
+                if super_efetivo:
+                    self.manager.score.registrar_elemental()
+                    self.manager.audio.play_sfx("super_effective")
+                    self.manager.notificacoes.adicionar(
+                        "Super efetivo! x1.5  +50 pts",
+                        cor=(255, 230, 50),
+                        duracao=1.5,
+                    )
+            else:
+                # Jogador tomou dano: verificar crítico e resetar combo
+                self.manager.score.registrar_dano_recebido(
+                    dano, self.battle.player.max_hp)
+
             self.message = (
-                f"{result['attacker']} causou  {result['damage']}  de dano!")
+                f"{result['attacker']} causou  {dano}  de dano!")
 
         self.objects.append(
-            Projectile(origin, defender_obj,
-                       attacker_obj.character.element, on_hit))
+            Projectile(origin, defender_obj, atk_elem, on_hit))
 
     def _spawn_impact(self, pos: pygame.Vector2, element: str):
         color = ELEMENT_COLORS.get(element, WHITE)
@@ -278,7 +312,8 @@ class BattleScene(GameScene):
             return
         if not self.finished and not self.battle.is_over():
             if event.key in (pygame.K_a, pygame.K_SPACE) and not self._enemy_turn_pending:
-                self._launch_projectile(self.player_obj, self.enemy_obj)
+                self._launch_projectile(self.player_obj, self.enemy_obj,
+                                        is_player_attack=True)
                 self._enemy_turn_pending = True
                 self._enemy_turn_timer   = 1.0
         if self.finished and event.key == pygame.K_RETURN:
@@ -303,7 +338,8 @@ class BattleScene(GameScene):
             self._enemy_turn_timer -= dt
             if self._enemy_turn_timer <= 0:
                 if not self.battle.is_over():
-                    self._launch_projectile(self.enemy_obj, self.player_obj)
+                    self._launch_projectile(self.enemy_obj, self.player_obj,
+                                            is_player_attack=False)
                 self._enemy_turn_pending = False
 
         if self.battle.is_over() and not self.finished:
@@ -340,6 +376,7 @@ class BattleScene(GameScene):
         # HUDs
         self.player_obj.draw_hud(screen, 16, 16)
         self.enemy_obj.draw_hud(screen, SCREEN_WIDTH - 174, 16)
+        self._draw_score_hud(screen)
 
         self._draw_message_box(screen)
 
@@ -359,9 +396,30 @@ class BattleScene(GameScene):
         div.fill((255, 255, 255, 40))
         screen.blit(div, (mid, 80))
 
+    def _draw_score_hud(self, screen):
+        """Exibe pontuação atual da batalha e combo no centro-topo."""
+        score = self.manager.score.get_battle_score()
+        combo = self.manager.score.get_combo()
+        f     = pygame.font.SysFont(None, 22)
+
+        score_txt = f.render(f"Pts: {score}", True, (220, 220, 100))
+        cx = SCREEN_WIDTH // 2
+        bg  = pygame.Surface((score_txt.get_width() + 12, 18), pygame.SRCALPHA)
+        bg.fill((0, 0, 0, 140))
+        screen.blit(bg, (cx - score_txt.get_width() // 2 - 6, 80))
+        screen.blit(score_txt, (cx - score_txt.get_width() // 2, 81))
+
+        if combo >= 2:
+            combo_txt = f.render(f"Combo x{combo}!", True, (255, 180, 40))
+            screen.blit(combo_txt, (cx - combo_txt.get_width() // 2, 100))
+
     def _draw_message_box(self, screen):
-        box    = pygame.Rect(20, SCREEN_HEIGHT - 110, SCREEN_WIDTH - 40, 88)
-        bg_s   = pygame.Surface((box.w, box.h), pygame.SRCALPHA)
+        if self.finished and self._last_summary:
+            self._draw_summary_panel(screen)
+            return
+
+        box  = pygame.Rect(20, SCREEN_HEIGHT - 110, SCREEN_WIDTH - 40, 88)
+        bg_s = pygame.Surface((box.w, box.h), pygame.SRCALPHA)
         bg_s.fill((0, 0, 0, 180))
         screen.blit(bg_s, (box.x, box.y))
         pygame.draw.rect(screen, (180, 180, 220), box, 2, border_radius=8)
@@ -370,24 +428,85 @@ class BattleScene(GameScene):
         font_sm  = pygame.font.SysFont(None, 22)
         msg  = font_big.render(self.message, True, WHITE)
         tip  = font_sm.render("A / ESPAÇO = atacar", True, (160, 160, 200))
-        back = font_sm.render("ENTER = voltar ao mapa", True, (160, 200, 160))
-        screen.blit(msg,  (box.x + 14, box.y + 14))
+        screen.blit(msg, (box.x + 14, box.y + 14))
         if not self.finished:
-            screen.blit(tip,  (box.x + 14, box.y + 52))
-        else:
-            screen.blit(back, (box.x + 14, box.y + 52))
+            screen.blit(tip, (box.x + 14, box.y + 52))
+
+    def _draw_summary_panel(self, screen):
+        """Painel de resultado exibido ao fim da batalha antes de voltar ao mapa."""
+        s   = self._last_summary
+        box = pygame.Rect(20, SCREEN_HEIGHT - 200, SCREEN_WIDTH - 40, 178)
+        bg  = pygame.Surface((box.w, box.h), pygame.SRCALPHA)
+        bg.fill((0, 0, 0, 210))
+        screen.blit(bg, (box.x, box.y))
+        cor_borda = (255, 215, 0) if "Vitoria" in self.message else (200, 80, 80)
+        pygame.draw.rect(screen, cor_borda, box, 2, border_radius=8)
+
+        fb  = pygame.font.SysFont(None, 26)
+        fsm = pygame.font.SysFont(None, 21)
+        x, y = box.x + 14, box.y + 10
+
+        screen.blit(fb.render(self.message, True, WHITE), (x, y));  y += 24
+
+        # Linha divisória
+        pygame.draw.line(screen, (100, 100, 130),
+                         (x, y), (box.right - 14, y));  y += 6
+
+        # Breakdown em duas colunas
+        col_esq = [
+            (f"Inimigo derrotado:  +{s.get('base_inimigo', 0)}", (200, 220, 255)),
+            (f"Bonus elemental:    +{s.get('bonus_elemental', 0)}", (255, 230, 80)),
+            (f"Bonus combo:        +{s.get('bonus_combo', 0)}", (255, 180, 40)),
+            (f"Penalidades:        -{s.get('penalidades', 0)}", (255, 100, 100)),
+        ]
+        col_dir = [
+            (f"Combo max: x{s.get('max_combo', 0)}", (200, 200, 200)),
+            (f"Tempo:     {s.get('tempo_s', 0)}s  x{s.get('mult_tempo', 1)}", (200, 200, 200)),
+            (f"HP final:  {s.get('hp_final', '?')}  x{s.get('mult_hp', 1)}", (200, 200, 200)),
+        ]
+        for i, (txt, cor) in enumerate(col_esq):
+            screen.blit(fsm.render(txt, True, cor), (x, y + i * 18))
+        for i, (txt, cor) in enumerate(col_dir):
+            screen.blit(fsm.render(txt, True, cor),
+                        (box.x + box.w // 2 + 10, y + i * 18))
+
+        y += max(len(col_esq), len(col_dir)) * 18 + 4
+        pygame.draw.line(screen, (100, 100, 130),
+                         (x, y), (box.right - 14, y));  y += 6
+
+        total_txt = fb.render(
+            f"Pontos nesta batalha: {s.get('score_batalha', 0)}    "
+            f"Total: {s.get('total', 0)}",
+            True, (255, 215, 0))
+        screen.blit(total_txt, (x, y));  y += 24
+
+        back = fsm.render("ENTER = voltar ao mapa", True, (160, 200, 160))
+        screen.blit(back, (x, y))
 
     # -----------------------------------------------------------------------
     def _handle_battle_end(self):
+        self.manager.audio.stop_music(fade_ms=800)
         winner = self.battle.get_winner()
-        if winner == self.manager.game.player:
+        player = self.manager.game.player
+
+        if winner == player:
+            self.manager.audio.play_sfx("victory")
+            self._last_summary = self.manager.score.finalizar_batalha(
+                self.battle.enemy, player.hp, player.max_hp)
             self.manager.game.handle_victory(self.battle.enemy)
             if self.manager.game.state == GameState.GAME_COMPLETE:
-                self.message = "Voce venceu o jogo!  ENTER para voltar."
+                self.message = "Vitoria! Voce venceu o jogo!"
             else:
-                self.message = "Vitoria!  ENTER para voltar ao mapa."
+                self.message = "Vitoria!"
+            self.manager.notificacoes.adicionar(
+                f"+{self._last_summary['score_batalha']} pontos!",
+                cor=(255, 215, 0),
+                duracao=3.0,
+                destaque=True,
+            )
         else:
+            self.manager.audio.play_sfx("defeat")
             self.manager.game.state = GameState.GAME_OVER
-            self.manager.game.player.hp = self.manager.game.player.max_hp
+            player.hp = player.max_hp
             self.message = "Derrota...  ENTER para voltar ao mapa."
         self.finished = True

@@ -25,6 +25,33 @@ import pygame
 #  UTILITÁRIOS
 # ─────────────────────────────────────────────────────────────────────────────
 
+import random as _random
+
+
+def _make_breathing_anim(pixels: list[str], palette: dict) -> list[tuple]:
+    """Gera 2 frames de respiração: normal + sprite deslocado 1px para cima."""
+    blank = "." * max(len(r) for r in pixels)
+    frame_b = list(pixels[1:]) + [blank]
+    return [(pixels, palette), (frame_b, palette)]
+
+
+def _make_death_frames(pixels: list[str], palette: dict) -> list[tuple]:
+    """Gera 3 frames de morte por dissolução progressiva (seed determinística)."""
+    rng = _random.Random(sum(ord(c) for c in pixels[0]))
+
+    def dissolve(rows: list[str], keep: float) -> list[str]:
+        return [
+            ''.join(c if c == '.' or rng.random() < keep else '.' for c in row)
+            for row in rows
+        ]
+
+    return [
+        (pixels,             palette),
+        (dissolve(pixels, 0.55), palette),
+        (dissolve(pixels, 0.20), palette),
+    ]
+
+
 def _build_surface(pixels: list[str], palette: dict, scale: int = 4) -> pygame.Surface:
     h = len(pixels)
     w = max(len(row) for row in pixels)

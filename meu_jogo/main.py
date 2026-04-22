@@ -29,6 +29,7 @@ def main():
     # Registra o callback de level up no herói.
     # Quando player.level_up() for chamado, isso exibe a notificação na tela.
     def _on_level_up(character):
+        manager.audio.play_sfx("level_up")
         manager.notificacoes.adicionar(
             f"★  {character.name} subiu para o nível {character.level}!  ★",
             cor=(255, 220, 50),
