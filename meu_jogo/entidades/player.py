@@ -4,6 +4,7 @@ class Player:
     def __init__(self, x, y, sprite_sheet):
         self.x = x
         self.y = y
+        self.velocidade = 5
 
         self.animacoes = {
             "down": [],
@@ -19,44 +20,51 @@ class Player:
         self.carregar_sprites(sprite_sheet)
 
     def carregar_sprites(self, sprite_sheet):
-        largura_sprite = 32
-        altura_sprite = 32
+        largura_total, altura_total = sprite_sheet.get_size()
 
-        sprites = []
+        # sua sprite sheet: 4 colunas x 4 linhas
+        colunas = 4
+        linhas = 4
 
-        # Carrega os 4 frames da imagem (1 linha)
-        for i in range(4):
-            frame = sprite_sheet.subsurface(
-                (i * largura_sprite, 0, largura_sprite, altura_sprite)
-            )
-            sprites.append(frame)
+        largura = largura_total // colunas
+        altura = altura_total // linhas
 
-        
-        self.animacoes["down"] = sprites
-        self.animacoes["up"] = sprites
-        self.animacoes["left"] = sprites
-        self.animacoes["right"] = sprites
+        escala = 2  # controla tamanho final
+
+        direcoes = ["down", "left", "right", "up"]
+
+        for linha, direcao in enumerate(direcoes):
+            for coluna in range(colunas):
+                frame = sprite_sheet.subsurface(
+                    (coluna * largura, linha * altura, largura, altura)
+                ).copy()  # IMPORTANTE
+
+                frame = pygame.transform.scale(
+                    frame, (largura * escala, altura * escala)
+                )
+
+                self.animacoes[direcao].append(frame)
 
     def mover(self, teclas):
         movimento = False
 
         if teclas[pygame.K_UP]:
-            self.y -= 5
+            self.y -= self.velocidade
             self.direcao = "up"
             movimento = True
 
         elif teclas[pygame.K_DOWN]:
-            self.y += 5
+            self.y += self.velocidade
             self.direcao = "down"
             movimento = True
 
         elif teclas[pygame.K_LEFT]:
-            self.x -= 5
+            self.x -= self.velocidade
             self.direcao = "left"
             movimento = True
 
         elif teclas[pygame.K_RIGHT]:
-            self.x += 5
+            self.x += self.velocidade
             self.direcao = "right"
             movimento = True
 
@@ -68,7 +76,7 @@ class Player:
     def animar(self):
         self.tempo_animacao += 1
 
-        if self.tempo_animacao >= 10:
+        if self.tempo_animacao >= 8:  
             self.frame_atual = (self.frame_atual + 1) % len(self.animacoes[self.direcao])
             self.tempo_animacao = 0
 

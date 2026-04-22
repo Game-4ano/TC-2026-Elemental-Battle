@@ -1,21 +1,20 @@
 import pygame
-from entidades.player import Player
-from cenas.mapa import Mapa
+from meu_jogo.entidades.player import Player
+from meu_jogo.cenas.mapa import Mapa
 
 class Game:
     def __init__(self):
         pygame.init()
 
-        self.tela = pygame.display.set_mode((1920,1080))
+        self.tela = pygame.display.set_mode((1920, 1080))
         pygame.display.set_caption("Elemental Battle")
 
         mapa_img = pygame.image.load("meu_jogo/assets/mapa/mapa.png")
         sprite_sheet = pygame.image.load("meu_jogo/assets/sprite/player.png")
 
-        sprite_sheet = pygame.transform.scale(sprite_sheet, (128, 32))
 
         self.mapa = Mapa(mapa_img)
-        self.player = Player(100, 100, sprite_sheet)
+        self.player = Player(10, 10, sprite_sheet)
 
         self.rodando = True
 
@@ -28,7 +27,6 @@ class Game:
                     self.rodando = False
 
             teclas = pygame.key.get_pressed()
-
             self.player.mover(teclas)
 
             self.mapa.desenhar(self.tela)
