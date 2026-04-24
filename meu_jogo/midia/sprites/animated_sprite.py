@@ -39,9 +39,11 @@ class AnimatedSprite:
         scale: int = 3,
         fps: float = 8.0,
         flipped: bool = False,
+        loop: bool = True,
     ):
         self.fps     = fps
         self.flipped = flipped
+        self.loop    = loop
         self._timer  = 0.0
         self._index  = 0
 
@@ -67,7 +69,10 @@ class AnimatedSprite:
         frame_duration = 1.0 / self.fps
         while self._timer >= frame_duration:
             self._timer -= frame_duration
-            self._index  = (self._index + 1) % len(self._frames)
+            if self.loop:
+                self._index = (self._index + 1) % len(self._frames)
+            else:
+                self._index = min(self._index + 1, len(self._frames) - 1)
 
     def reset(self):
         """Volta para o primeiro frame (útil ao parar o movimento)."""

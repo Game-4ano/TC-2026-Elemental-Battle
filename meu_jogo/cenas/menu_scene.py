@@ -10,6 +10,7 @@ Fluxo:
 """
 
 import math
+import random
 import pygame
 
 from meu_jogo.core.game_scene import GameScene
@@ -159,6 +160,23 @@ class MenuScene(GameScene):
         # Posições dos 5 elementos em pentágono centrado na tela
         self._elem_pos = self._calcular_posicoes()
 
+        # Estrelas de fundo animadas
+        self._stars = [
+            {
+                "pos":   pygame.Vector2(random.randint(0, SCREEN_WIDTH),
+                                        random.randint(0, SCREEN_HEIGHT)),
+                "phase": random.uniform(0, math.tau),
+                "speed": random.uniform(0.6, 2.2),
+                "drift": random.uniform(-8, 8),
+                "r":     random.randint(1, 3),
+                "color": random.choice([
+                    (200, 180, 255), (180, 210, 255),
+                    (255, 230, 200), (160, 230, 255),
+                ]),
+            }
+            for _ in range(55)
+        ]
+
         self.manager.audio.play_music("menu_theme", volume=0.45)
 
     # -----------------------------------------------------------------------
@@ -200,6 +218,15 @@ class MenuScene(GameScene):
         if self.fase == self.FASE_SELECAO:
             self._hover_idx = self._elem_sob_mouse(*pygame.mouse.get_pos())
 
+        # Atualiza estrelas: derivam lentamente para cima e piscam
+        for s in self._stars:
+            s["phase"]   += dt * s["speed"]
+            s["pos"].y   -= 6 * dt
+            s["pos"].x   += s["drift"] * dt * 0.15
+            if s["pos"].y < -4:
+                s["pos"].y = SCREEN_HEIGHT + 4
+                s["pos"].x = random.randint(0, SCREEN_WIDTH)
+
     # -----------------------------------------------------------------------
     def _elem_sob_mouse(self, mx, my):
         for i, (cx, cy) in enumerate(self._elem_pos):
@@ -233,6 +260,15 @@ class MenuScene(GameScene):
         self.draw(screen)
 
     # -----------------------------------------------------------------------
+    def _draw_stars(self, screen):
+        """Desenha estrelas cintilantes de fundo."""
+        for s in self._stars:
+            alpha = int(80 + 70 * math.sin(s["phase"]))
+            r     = s["r"]
+            surf  = pygame.Surface((r * 2 + 2, r * 2 + 2), pygame.SRCALPHA)
+            pygame.draw.circle(surf, (*s["color"], alpha), (r + 1, r + 1), r)
+            screen.blit(surf, (int(s["pos"].x) - r - 1, int(s["pos"].y) - r - 1))
+
     def _bg_gradient(self, screen, top, bot):
         for i in range(SCREEN_HEIGHT):
             t = i / SCREEN_HEIGHT
@@ -241,6 +277,7 @@ class MenuScene(GameScene):
 
     def _draw_titulo(self, screen):
         self._bg_gradient(screen, (10, 5, 30), (30, 15, 60))
+        self._draw_stars(screen)
 
         # Círculos decorativos de fundo
         decos = [
@@ -277,15 +314,22 @@ class MenuScene(GameScene):
             msg = self._f_sub.render("Aperte qualquer tecla para comecar", True, (220, 220, 255))
             screen.blit(msg, (SCREEN_WIDTH // 2 - msg.get_width() // 2, cy + 40))
 
+        # Recorde salvo
+        hs = self.manager.save.load_highscore()
+        if hs > 0:
+            hs_txt = self._f_pequena.render(f"Recorde: {hs}", True, (200, 180, 80))
+            screen.blit(hs_txt, (SCREEN_WIDTH // 2 - hs_txt.get_width() // 2, cy + 74))
+
         # Créditos
         cred = self._f_pequena.render(
-            "Arthur Flacon  *  Eduardo Ceciliato  *  Vinicius de Oliveira",
+            "Artur Flacon  *  Eduardo Ceciliato  *  Vinicius de Oliveira",
             True, (110, 110, 145))
         screen.blit(cred, (SCREEN_WIDTH // 2 - cred.get_width() // 2, SCREEN_HEIGHT - 28))
 
     # -----------------------------------------------------------------------
     def _draw_selecao(self, screen):
         self._bg_gradient(screen, (8, 8, 25), (20, 15, 45))
+        self._draw_stars(screen)
 
         # Título compacto no topo
         t_surf  = self._f_titulo.render("ELEMENTAL BATTLE", True, (255, 220, 60))

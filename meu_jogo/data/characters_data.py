@@ -1,7 +1,7 @@
 from meu_jogo.entidades.character import Character
 
 # ---------------------------------------------------------------------------
-# Inimigos genéricos (usados pelo Game/GameMap antigo)
+# Inimigos genericos (usados pelo Game/GameMap antigo)
 # ---------------------------------------------------------------------------
 slime = Character(
     "Slime", 50, 10, 2, "Grass", "Fire",
@@ -22,43 +22,47 @@ forest_guardian = Character(
 )
 
 # ---------------------------------------------------------------------------
-# Bosses das salas do mundo aberto
+# Bosses das salas do mundo aberto — dificuldade progressiva
+# Boss 1 (Agua):   mais facil   — referencia para o jogador se adaptar
+# Boss 2 (Eletrico): intermediario
+# Boss 3 (Vento):  dificil
+# Boss 4 (Fogo):   final — desafiador
 # ---------------------------------------------------------------------------
 hydra = Character(
     name="Hydra",
-    hp=110, damage=18, defense=6,
+    hp=100, damage=16, defense=4,
     element="Water", weakness="Electric",
     is_boss=True,
-    sprite_key="tide_crawler",   # sprite aquático disponível na factory
+    sprite_key="tide_crawler",
 )
 
 thunder_beast = Character(
     name="Thunder Beast",
-    hp=95, damage=22, defense=4,
+    hp=120, damage=20, defense=5,
     element="Electric", weakness="Grass",
     is_boss=True,
-    sprite_key="storm_raven",    # sprite elétrico disponível na factory
+    sprite_key="storm_raven",
 )
 
 storm_eagle = Character(
     name="Storm Eagle",
-    hp=85, damage=20, defense=5,
+    hp=130, damage=22, defense=6,
     element="Air", weakness="Electric",
     is_boss=True,
-    sprite_key="storm_raven",    # reutiliza raven (tema aéreo/elétrico)
+    sprite_key="storm_raven",
 )
 
 magma_titan = Character(
     name="Magma Titan",
-    hp=130, damage=25, defense=7,
+    hp=160, damage=28, defense=8,
     element="Fire", weakness="Water",
     is_boss=True,
-    sprite_key="flame_hound",    # sprite de fogo disponível na factory
+    sprite_key="flame_hound",
 )
 
 
 def reset_boss(boss: Character) -> Character:
-    """Retorna o boss com HP resetado ao máximo."""
+    """Retorna o boss com HP resetado ao maximo."""
     boss.hp = boss.max_hp
     return boss
 

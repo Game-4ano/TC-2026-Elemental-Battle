@@ -180,6 +180,58 @@ _HERO_WALK_C = [
 ]
 
 # ─────────────────────────────────────────────────────────────────────────────
+#  HERÓI — frame IDLE-B (respiração: corpo sobe 1px)
+# ─────────────────────────────────────────────────────────────────────────────
+
+_HERO_IDLE_B = _HERO_IDLE[1:] + ["." * len(_HERO_IDLE[0])]
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  HERÓI — frame ATTACK (braço direito estendido para atacar)
+# ─────────────────────────────────────────────────────────────────────────────
+
+_HERO_ATTACK = [
+    "....cCCCCc....",
+    "...cCCCCCCc...",
+    "...CCCCCCC....",
+    "...SSSSSSS....",
+    "..ESSWSWSE...",
+    "...SSSSSSS....",
+    "...SEEEEEES...",
+    "..BHHGGHHHBHH.",   # braço estendido para a direita
+    "..BhhhGGhhHBHS.",  # punho (S = pele da mão)
+    "..BHHhhhHHHB...",
+    "..BHH...HHHB...",
+    "...HH...HHH...",
+    "..bHH...HHbb.",
+    "..bHH...HHbb.",
+    "..bbb...bbbb.",
+    "..bbb...bbbb.",
+]
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  HERÓI — frame HURT (dor: olhos fechados, expressão de sofrimento)
+# ─────────────────────────────────────────────────────────────────────────────
+
+_HERO_HURT = [
+    "....cCCCCc....",
+    "...cCCCCCCc...",
+    "...CCCCCCC....",
+    "...SSSSSSS....",
+    "..ESSSSSSSE..",   # olhos fechados (W→S, sem branco visível)
+    "...SSSSSSS....",
+    "...SSEEEESS...",  # boca virada — expressão de dor
+    "..BHHGGHHHB..",
+    "..BhhhGGhhHB.",
+    "..BHHhhhHHHB.",
+    "..BHH...HHHB.",
+    "...HH...HHH..",
+    "..bHH...HHbb.",
+    "..bHH...HHbb.",
+    "..bbb...bbbb.",
+    "..bbb...bbbb.",
+]
+
+# ─────────────────────────────────────────────────────────────────────────────
 #  SLIME
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -539,6 +591,70 @@ _VOID_PIXELS = [
     "..B...........B.",
 ]
 
+# ─────────────────────────────────────────────────────────────────────────────
+#  BOSS ATTACKS — frames alternativos para animação de ataque
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Tide Crawler attack: tentáculos espalhados, olhos brilhando
+_TIDE_ATTACK_PIXELS = [
+    "....KBBBBBBk....",
+    "KK.KBbCCCCbBK.KK",  # tentáculos laterais levantados
+    "..KBbCcccccBbK..",
+    ".KBbCcTEeTcCbBK.",
+    "KBbCcCEeeeECcCbK",  # olhos mais abertos (agressivo)
+    "KBbCcCEeeeECcCbK",
+    "KBbCcCcccccCcCbK",
+    "KBbCGCcccccCGCbK",
+    "KBbCGgCcccCgGCbK",
+    ".KBbCGgggggGCbK.",
+    "..KBbCGgGgGCbK..",
+    "K..KBbK...KbBK.K",  # tentáculos base espalhados
+    ".K..KBK...KBK.K.",
+    "..K..BK...KB..K.",
+    "...K...........K",
+    "................",
+]
+
+# Storm Raven attack: asas completamente abertas, raios
+_RAVEN_ATTACK_PIXELS = [
+    "WwwwyYYYYYywwwW.",  # asas totalmente abertas (topo)
+    "WwwDDDddddDDwwW.",
+    "WwDDDdGGGGGdDDwW",
+    ".DDDdGGEEEGGdDDD",
+    "DDdGGEEEEEGGdDDD",
+    "DDdGGGEYEGGGdDDD",  # olho central brilhando (Y=amarelo)
+    "DDDdGGGGGGGdDDD.",
+    ".DDDdddddddDDD..",
+    "WwwDDDDDDDDDwwW.",  # asas mais largas em baixo
+    "WwwwDDDyYydDwwwW",
+    "WwwwwDDyYyDDwwwW",
+    ".WwwwDDDDDDwwwW.",
+    "..WwwDDD.DDwwW..",
+    "....WwD...DwW...",
+    ".....W.....W....",
+    "................",
+]
+
+# Flame Hound attack: cabeça baixa, chamas mais intensas
+_FLAME_HOUND_ATTACK_PIXELS = [
+    "YyYyY...........",
+    "yYYYYy.....YyYy.",  # chamas extras
+    "YYYYYYy...yYYYYy",
+    ".yYYYy.....yYYy.",
+    "..BDDDDDDDDDDb..",
+    ".BDDdOOOOOOdDDB.",
+    "BDDdOOWEOWEOdDDB",
+    "BDDdOOONNNOOdDDB",
+    "BDdOOONNNNNOOdDB",  # mesmo corpo
+    ".BDdOOOOOOOOdDB.",
+    "..BDDDDDDDDDDDB.",
+    ".BD.DD...DD.DDB.",
+    "YBD.DD...DD.DBY.",  # chamas na base das patas
+    ".YDYBB...BBYDy..",
+    "YyY.B...B.YyY...",
+    ".yYY.....YyY....",
+]
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  REGISTRO — sprite_key → (pixels, palette)
@@ -558,20 +674,61 @@ _SPRITE_DATA: dict[str, tuple[list[str], dict]] = {
     "void_emperor":    (_VOID_PIXELS,       _VOID_PALETTE),
 }
 
+def _gen_enemy_anims() -> dict[str, list[tuple]]:
+    """
+    Gera automaticamente animações de idle (respiração) e death (dissolução)
+    para todos os sprites de inimigos registrados em _SPRITE_DATA.
+    """
+    result: dict[str, list[tuple]] = {}
+    for key, (pixels, palette) in _SPRITE_DATA.items():
+        if key == "hero":
+            continue
+        result[f"{key}_idle"]  = _make_breathing_anim(pixels, palette)
+        result[f"{key}_death"] = _make_death_frames(pixels, palette)
+    return result
+
+
 # Animações: chave → lista ordenada de (pixels, palette)
 # O AnimatedSprite vai ciclar por esses frames automaticamente.
 _ANIMATION_DATA: dict[str, list[tuple[list[str], dict]]] = {
-    # 4 frames: idle → passo-A → idle → passo-B
+    # ── Overworld ─────────────────────────────────────────────────────────────
     "hero_walk": [
         (_HERO_IDLE,   _HERO_PALETTE),
         (_HERO_WALK_A, _HERO_PALETTE),
-        (_HERO_WALK_C, _HERO_PALETTE),   # transição agachado
+        (_HERO_WALK_C, _HERO_PALETTE),
         (_HERO_WALK_B, _HERO_PALETTE),
-        (_HERO_WALK_C, _HERO_PALETTE),   # transição agachado
+        (_HERO_WALK_C, _HERO_PALETTE),
     ],
     "hero_idle": [
         (_HERO_IDLE, _HERO_PALETTE),
     ],
+    # ── Batalha — herói ───────────────────────────────────────────────────────
+    "hero_idle_breath": [
+        (_HERO_IDLE,   _HERO_PALETTE),
+        (_HERO_IDLE_B, _HERO_PALETTE),
+    ],
+    "hero_attack": [
+        (_HERO_IDLE,   _HERO_PALETTE),
+        (_HERO_ATTACK, _HERO_PALETTE),
+    ],
+    "hero_hurt": [
+        (_HERO_HURT, _HERO_PALETTE),
+    ],
+    # ── Batalha — bosses (frames de ataque específicos) ───────────────────────
+    "tide_crawler_attack": [
+        (_TIDE_PIXELS,             _TIDE_PALETTE),
+        (_TIDE_ATTACK_PIXELS,      _TIDE_PALETTE),
+    ],
+    "storm_raven_attack": [
+        (_RAVEN_PIXELS,            _RAVEN_PALETTE),
+        (_RAVEN_ATTACK_PIXELS,     _RAVEN_PALETTE),
+    ],
+    "flame_hound_attack": [
+        (_FLAME_HOUND_PIXELS,        _FLAME_HOUND_PALETTE),
+        (_FLAME_HOUND_ATTACK_PIXELS, _FLAME_HOUND_PALETTE),
+    ],
+    # ── Batalha — inimigos (idle respiração + morte, gerados automaticamente) ─
+    **_gen_enemy_anims(),
 }
 
 # Cache sprites estáticos

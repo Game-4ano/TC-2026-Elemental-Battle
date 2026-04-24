@@ -4,7 +4,7 @@ from meu_jogo.core.game_scene import GameScene
 from meu_jogo.core.config import SCREEN_WIDTH, SCREEN_HEIGHT, WHITE, TILE_SIZE
 from meu_jogo.core.map import PortalTile
 from meu_jogo.core.battle import Battle
-from meu_jogo.entidades.ai_entidade import BasicAI
+from meu_jogo.entidades.ai_entidade import SmartAI
 from meu_jogo.midia.sprites.animated_sprite import AnimatedSprite
 
 
@@ -75,7 +75,7 @@ class CampoDeTreinoScene(GameScene):
             if not player.is_alive():
                 player.hp = player.max_hp
 
-            battle = Battle(player, boss, BasicAI())
+            battle = Battle(player, boss, SmartAI())
             bg     = ROOM_BG.get(dest, (15, 15, 30))
             bg_img = self.manager.map_manager.bg_image
 

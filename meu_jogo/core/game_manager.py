@@ -5,6 +5,7 @@ from meu_jogo.core.scene_manager import SceneManager
 from meu_jogo.core.notificacao import NotificationSystem
 from meu_jogo.core.audio_manager import AudioManager
 from meu_jogo.core.score_system import ScoreSystem
+from meu_jogo.core.save_system import SaveSystem
 from meu_jogo.cenas.menu_scene import MenuScene
 
 
@@ -22,6 +23,7 @@ class GameManager:
 
         self.audio         = AudioManager()
         self.score         = ScoreSystem()
+        self.save          = SaveSystem()
         self.scene_manager = SceneManager()
         self.notificacoes  = NotificationSystem(SCREEN_WIDTH)
 

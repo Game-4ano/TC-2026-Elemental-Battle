@@ -7,8 +7,11 @@ from meu_jogo.core.game_object import GameObject
 from meu_jogo.core.config import SCREEN_WIDTH, SCREEN_HEIGHT, WHITE, BLACK, GREEN, GRAY, RED
 from meu_jogo.core.game_state import GameState
 from meu_jogo.core.elements import element_advantage
-from meu_jogo.entidades.acoes import AttackAction
-from meu_jogo.midia.sprites.sprite_factory import get_sprite
+from meu_jogo.entidades.acoes import (
+    Action, AttackAction, SpecialAttackAction, DefendAction, HealAction
+)
+from meu_jogo.midia.sprites.sprite_factory import get_sprite, get_animation
+from meu_jogo.midia.sprites.animated_sprite import AnimatedSprite
 
 ELEMENT_COLORS = {
     "Fire":     (255, 110,  30),
@@ -20,17 +23,20 @@ ELEMENT_COLORS = {
 }
 
 ELEMENT_NAMES_PT = {
-    "Fire": "Fogo", "Water": "Água", "Grass": "Planta",
-    "Electric": "Elétrico", "Dark": "Sombra", "Air": "Vento",
+    "Fire": "Fogo", "Water": "Agua", "Grass": "Planta",
+    "Electric": "Eletrico", "Dark": "Sombra", "Air": "Vento",
 }
 
 # Escala do sprite na tela de batalha.
-# 16×16 × 5 = 80×80 px  (bom para tela 500×500)
+# 16x16 x 5 = 80x80 px
 _SPRITE_SCALE = 5
+
+# Rotulos do menu de batalha
+_MENU_LABELS = ["Atacar", "Especial", "Defender", "Curar"]
 
 
 # ---------------------------------------------------------------------------
-# Projétil
+# Projetil
 # ---------------------------------------------------------------------------
 class Projectile(GameObject):
     SPEED  = 340.0
@@ -78,20 +84,22 @@ class Projectile(GameObject):
 
 
 # ---------------------------------------------------------------------------
-# CharacterObject  —  usa sprite_factory; fallback = retângulo colorido
+# CharacterObject  —  sprite animado com maquina de estados
 # ---------------------------------------------------------------------------
 class CharacterObject(GameObject):
     """
     Representa visualmente um personagem na tela de batalha.
-
-    Ordem de prioridade para renderização:
-        1. Sprite da sprite_factory  (se character.sprite_key existir)
-        2. Retângulo colorido        (fallback automático)
+    Suporta animacoes de idle, ataque, dano e morte via AnimatedSprite.
+    Fallback: retangulo colorido se sprite_key nao existir.
     """
 
-    # Tamanho de referência usado para colisão e HUD.
-    # Para sprites 16×16 × _SPRITE_SCALE = 80, usamos 80 como SIZE.
     SIZE = 16 * _SPRITE_SCALE   # 80 px
+
+    # Estados de animacao
+    IDLE   = "idle"
+    ATTACK = "attack"
+    HURT   = "hurt"
+    DYING  = "dying"
 
     def __init__(self, character, x, y, fallback_color, facing_right):
         super().__init__(x, y)
@@ -102,13 +110,29 @@ class CharacterObject(GameObject):
         self._shake_off     = pygame.Vector2(0, 0)
         self._flash_timer   = 0.0
 
-        # Carrega sprite uma única vez (None se sprite_key não existe)
-        self._sprite: pygame.Surface | None = self._load_sprite()
+        # HP animado: interpola suavemente em direcao ao HP real
+        self._hp_display: float = float(character.hp)
 
-        # Versão espelhada para inimigos (que ficam à direita, olhando à esquerda)
-        self._sprite_flipped: pygame.Surface | None = None
-        if self._sprite and not facing_right:
-            self._sprite_flipped = pygame.transform.flip(self._sprite, True, False)
+        # Sprite estatico (fallback quando nao ha anim ativa)
+        self._sprite: pygame.Surface | None = self._load_sprite()
+        self._sprite_flipped: pygame.Surface | None = (
+            pygame.transform.flip(self._sprite, True, False)
+            if self._sprite and not facing_right else None
+        )
+
+        # Animacao continua de idle (respiracao)
+        idle_key = "hero_idle_breath" if facing_right else (
+            f"{getattr(character, 'sprite_key', '')}_idle")
+        self._idle_anim: AnimatedSprite | None = self._try_anim(
+            idle_key, fps=1.8, loop=True)
+
+        # Animacao ativa (ataque / dano / morte)
+        self._state          = self.IDLE
+        self._state_timer    = 0.0
+        self._state_duration = 0.0
+        self._anim: AnimatedSprite | None = None
+
+    # ── Carregamento ──────────────────────────────────────────────────────────
 
     def _load_sprite(self) -> pygame.Surface | None:
         key = getattr(self.character, "sprite_key", None)
@@ -116,11 +140,57 @@ class CharacterObject(GameObject):
             return None
         return get_sprite(key, scale=_SPRITE_SCALE)
 
+    def _try_anim(self, key: str, fps: float = 6.0,
+                  loop: bool = True) -> AnimatedSprite | None:
+        if not get_animation(key, scale=_SPRITE_SCALE):
+            return None
+        a = AnimatedSprite(key, scale=_SPRITE_SCALE, fps=fps, loop=loop)
+        if not self.facing_right:
+            a.flipped = True
+        return a
+
+    # ── Triggers de estado ────────────────────────────────────────────────────
+
+    def play_attack(self):
+        """Inicia animacao de ataque (0.35s, nao-loop)."""
+        skey = getattr(self.character, "sprite_key", "")
+        key  = "hero_attack" if self.facing_right else f"{skey}_attack"
+        anim = self._try_anim(key, fps=8.0, loop=False)
+        if anim:
+            self._anim = anim
+            self._state = self.ATTACK
+            self._state_timer    = 0.0
+            self._state_duration = 0.35
+
     def take_hit(self):
+        """Flash + shake + animacao de hurt para o heroi."""
         self._shake_timer = 0.3
         self._flash_timer = 0.2
+        if self.facing_right:          # so o heroi tem hero_hurt
+            anim = self._try_anim("hero_hurt", fps=6.0, loop=False)
+            if anim:
+                self._anim = anim
+                self._state = self.HURT
+                self._state_timer    = 0.0
+                self._state_duration = 0.3
+
+    def start_death_anim(self):
+        """Inicia dissolucao do inimigo (0.9s)."""
+        skey = getattr(self.character, "sprite_key", "")
+        anim = self._try_anim(f"{skey}_death", fps=3.5, loop=False)
+        self._state = self.DYING
+        self._state_timer    = 0.0
+        self._state_duration = 0.9
+        self._anim = anim  # pode ser None → fade no sprite estatico
+
+    @property
+    def death_anim_done(self) -> bool:
+        return self._state == self.DYING and self._state_timer >= self._state_duration
+
+    # ── Update ────────────────────────────────────────────────────────────────
 
     def update(self, dt: float):
+        # Shake / flash
         if self._shake_timer > 0:
             self._shake_timer -= dt
             self._shake_off = pygame.Vector2(
@@ -130,52 +200,80 @@ class CharacterObject(GameObject):
         if self._flash_timer > 0:
             self._flash_timer -= dt
 
+        # Interpola o HP exibido na barra em direcao ao HP real
+        target = float(max(self.character.hp, 0))
+        diff   = target - self._hp_display
+        if abs(diff) > 0.5:
+            self._hp_display += diff * min(7.0 * dt, 1.0)
+        else:
+            self._hp_display = target
+
+        # Idle breathing
+        if self._state == self.IDLE and self._idle_anim:
+            self._idle_anim.update(dt)
+
+        # Animacao ativa
+        if self._state != self.IDLE:
+            self._state_timer += dt
+            if self._anim:
+                self._anim.update(dt)
+            if self._state != self.DYING and self._state_timer >= self._state_duration:
+                self._state = self.IDLE
+                self._anim  = None
+
+    # ── Draw ──────────────────────────────────────────────────────────────────
+
+    def _current_surf(self) -> pygame.Surface | None:
+        if self._state != self.IDLE and self._anim:
+            return self._anim.current_frame
+        if self._idle_anim:
+            return self._idle_anim.current_frame
+        return self._sprite_flipped if self._sprite_flipped else self._sprite
+
     def draw(self, screen: pygame.Surface):
         dp = self.position + self._shake_off
-        cx = int(dp.x)
-        cy = int(dp.y)
+        cx, cy = int(dp.x), int(dp.y)
 
-        # Sombra elíptica no chão
-        pygame.draw.ellipse(screen, (0, 0, 0),
-            (cx + 6, cy + self.SIZE - 6, self.SIZE - 12, 10))
+        dying    = self._state == self.DYING
+        progress = (self._state_timer / max(self._state_duration, 0.01)) if dying else 0.0
 
-        if self._sprite:
-            # ── Sprite pixel art ──────────────────────────────────────
-            surf = self._sprite_flipped if self._sprite_flipped else self._sprite
+        # Sombra (desaparece durante morte)
+        if not dying or progress < 0.7:
+            pygame.draw.ellipse(screen, (0, 0, 0),
+                (cx + 6, cy + self.SIZE - 6, self.SIZE - 12, 10))
 
-            if self._flash_timer > 0:
-                # Flash branco: copia a surface e tinta de branco
-                flash = surf.copy()
-                flash.fill((255, 255, 255, 160), special_flags=pygame.BLEND_RGBA_MULT)
-                screen.blit(flash, (cx, cy))
-            else:
-                screen.blit(surf, (cx, cy))
+        surf = self._current_surf()
 
-            # Borda de elemento ao redor do sprite (quadrado)
-            elem_c = ELEMENT_COLORS.get(self.character.element, WHITE)
-            pygame.draw.rect(screen, elem_c,
-                (cx - 2, cy - 2, self.SIZE + 4, self.SIZE + 4), 2)
+        if surf:
+            if dying:
+                surf = surf.copy()
+                surf.set_alpha(max(0, int(255 * (1.0 - progress))))
+            elif self._flash_timer > 0:
+                surf = surf.copy()
+                surf.fill((255, 255, 255, 160), special_flags=pygame.BLEND_RGBA_MULT)
+            screen.blit(surf, (cx, cy))
 
+            if not dying:
+                elem_c = ELEMENT_COLORS.get(self.character.element, WHITE)
+                pygame.draw.rect(screen, elem_c,
+                    (cx - 2, cy - 2, self.SIZE + 4, self.SIZE + 4), 2)
         else:
-            # ── Fallback: retângulo colorido (comportamento original) ──
             color = (255, 255, 255) if self._flash_timer > 0 else self.fallback_color
             body  = pygame.Rect(cx, cy, self.SIZE, self.SIZE)
             pygame.draw.rect(screen, color, body, border_radius=14)
             elem_c = ELEMENT_COLORS.get(self.character.element, WHITE)
             pygame.draw.rect(screen, elem_c, body, 3, border_radius=14)
 
-        # Rótulo de elemento abaixo do sprite
-        font     = pygame.font.SysFont(None, 19)
-        elem_c   = ELEMENT_COLORS.get(self.character.element, WHITE)
-        elem_name = ELEMENT_NAMES_PT.get(self.character.element, self.character.element)
-        lbl = font.render(f"[{elem_name}]", True, elem_c)
-        screen.blit(lbl, (cx, cy + self.SIZE + 2))
-
-        # Tag BOSS
-        if self.character.is_boss:
-            bfont = pygame.font.SysFont(None, 20)
-            tag   = bfont.render("★ BOSS", True, (220, 180, 0))
-            screen.blit(tag, (cx, cy - 18))
+        if not dying:
+            font = pygame.font.SysFont(None, 19)
+            elem_c = ELEMENT_COLORS.get(self.character.element, WHITE)
+            lbl = font.render(
+                f"[{ELEMENT_NAMES_PT.get(self.character.element, self.character.element)}]",
+                True, elem_c)
+            screen.blit(lbl, (cx, cy + self.SIZE + 2))
+            if self.character.is_boss:
+                tag = pygame.font.SysFont(None, 20).render("BOSS", True, (220, 180, 0))
+                screen.blit(tag, (cx, cy - 18))
 
     def draw_hud(self, screen, hud_x, hud_y):
         font  = pygame.font.SysFont(None, 22)
@@ -191,8 +289,8 @@ class CharacterObject(GameObject):
         screen.blit(name_s, (hud_x, hud_y))
 
         bar_w, bar_h = 148, 11
-        ratio     = max(self.character.hp, 0) / self.character.max_hp
-        hp_color  = (60, 200, 60) if ratio > 0.5 else (220, 180, 0) if ratio > 0.25 else (220, 40, 40)
+        ratio    = max(self._hp_display, 0) / self.character.max_hp
+        hp_color = (60, 200, 60) if ratio > 0.5 else (220, 180, 0) if ratio > 0.25 else (220, 40, 40)
         pygame.draw.rect(screen, (60, 60, 60),
             (hud_x, hud_y + 22, bar_w, bar_h), border_radius=4)
         pygame.draw.rect(screen, hp_color,
@@ -209,8 +307,8 @@ class CharacterObject(GameObject):
 # BattleScene
 # ---------------------------------------------------------------------------
 class BattleScene(GameScene):
-    # Personagem do jogador fica à esquerda, inimigo à direita.
-    # Posição = canto superior-esquerdo do sprite (80×80).
+    # Personagem do jogador fica a esquerda, inimigo a direita.
+    # Posicao = canto superior-esquerdo do sprite (80x80).
     PLAYER_X = 50.0
     ENEMY_X  = SCREEN_WIDTH - 50.0 - CharacterObject.SIZE   # 370.0
     CHARS_Y  = SCREEN_HEIGHT // 2 - CharacterObject.SIZE // 2   # 210.0
@@ -221,13 +319,31 @@ class BattleScene(GameScene):
         self.bg_color = bg_color
         self.bg_image = bg_image
         self.font     = pygame.font.SysFont(None, 24)
-        self.message  = "Pressione  A  ou  ESPAÇO  para atacar"
+        self.message  = "Escolha uma acao!"
         self.finished = False
         self._enemy_turn_pending = False
         self._enemy_turn_timer   = 0.0
         self._particles: list[dict] = []
         self.objects: list[GameObject] = []
         self._last_summary: dict = {}
+        self._death_started  = False
+        self._damage_texts:  list[dict] = []
+        self._screen_shake   = 0.0   # timer
+        self._shake_amount   = 0.0
+        self._super_flash    = 0     # alpha 0-255
+
+        # Menu de batalha
+        self._menu_index = 0
+
+        # Instancias de acao do jogador (usos persistem durante a batalha)
+        self._special_action = SpecialAttackAction()
+        self._defend_action  = DefendAction()
+        self._heal_action    = HealAction()
+
+        # Particulas ambientes de fundo (atmosfera elemental)
+        self._ambient: list[dict] = []
+        self._ambient_timer = 0.0
+
         self._load_characters()
 
         self.manager.audio.play_music("battle_theme", volume=0.50)
@@ -245,7 +361,7 @@ class BattleScene(GameScene):
 
     # -----------------------------------------------------------------------
     def _launch_projectile(self, attacker_obj, defender_obj,
-                           is_player_attack: bool = False):
+                           action: Action, is_player_attack: bool = False):
         origin = attacker_obj.position + pygame.Vector2(
             CharacterObject.SIZE // 2, CharacterObject.SIZE // 2)
 
@@ -254,42 +370,83 @@ class BattleScene(GameScene):
         super_efetivo = element_advantage.get(atk_elem) == def_elem
 
         self.manager.audio.play_sfx(f"attack_{atk_elem.lower()}")
+        attacker_obj.play_attack()
 
         def on_hit():
-            result = AttackAction().execute(
-                attacker_obj.character, defender_obj.character)
-            dano = result["damage"]
+            result = action.execute(attacker_obj.character, defender_obj.character)
+            dano   = result["damage"]
             defender_obj.take_hit()
             self._spawn_impact(defender_obj.position, atk_elem)
             self.manager.audio.play_sfx("hit")
 
+            # Texto flutuante de dano
+            is_special  = result.get("type") == "special"
+            cor_dano    = (180, 80, 255) if is_special else (
+                          (255, 220, 0) if super_efetivo else (255, 80, 80))
+            self._damage_texts.append({
+                "txt":   str(dano),
+                "pos":   pygame.Vector2(
+                    defender_obj.position.x + CharacterObject.SIZE // 2,
+                    defender_obj.position.y),
+                "vel":   pygame.Vector2(0, -70),
+                "life":  0.9,
+                "color": cor_dano,
+            })
+
             if is_player_attack:
-                # Combo e bônus elemental
                 nivel_combo = self.manager.score.increment_combo()
                 if nivel_combo >= 2:
                     self.manager.notificacoes.adicionar(
                         f"Combo x{nivel_combo}! +{nivel_combo * 25} pts",
-                        cor=(255, 200, 60),
-                        duracao=1.2,
-                    )
+                        cor=(255, 200, 60), duracao=1.2)
                 if super_efetivo:
                     self.manager.score.registrar_elemental()
                     self.manager.audio.play_sfx("super_effective")
+                    self._super_flash  = 200
+                    self._screen_shake = 0.25
+                    self._shake_amount = 6.0
                     self.manager.notificacoes.adicionar(
                         "Super efetivo! x1.5  +50 pts",
-                        cor=(255, 230, 50),
-                        duracao=1.5,
-                    )
+                        cor=(255, 230, 50), duracao=1.5)
             else:
-                # Jogador tomou dano: verificar crítico e resetar combo
                 self.manager.score.registrar_dano_recebido(
                     dano, self.battle.player.max_hp)
 
-            self.message = (
-                f"{result['attacker']} causou  {dano}  de dano!")
+            self.message = f"{result['attacker']} causou  {dano}  de dano!"
 
         self.objects.append(
             Projectile(origin, defender_obj, atk_elem, on_hit))
+
+    def _spawn_ambient(self):
+        """Spawna particula ambiente faint subindo da plataforma de cada personagem."""
+        for char_x, elem in (
+            (self.PLAYER_X, self.battle.player.element),
+            (self.ENEMY_X,  self.battle.enemy.element),
+        ):
+            color = ELEMENT_COLORS.get(elem, (200, 200, 200))
+            cx    = char_x + CharacterObject.SIZE // 2
+            self._ambient.append({
+                "pos":   pygame.Vector2(
+                    cx + random.uniform(-28, 28),
+                    self.CHARS_Y + CharacterObject.SIZE + 2),
+                "vel":   pygame.Vector2(
+                    random.uniform(-12, 12),
+                    -random.uniform(18, 55)),
+                "life":  random.uniform(1.8, 3.2),
+                "total": 3.2,
+                "color": color,
+                "r":     random.randint(2, 4),
+            })
+
+    def _draw_ambient(self, surface: pygame.Surface):
+        """Desenha particulas ambientes com curva de alpha em sino."""
+        for p in self._ambient:
+            t     = 1.0 - p["life"] / p["total"]   # 0 → 1 com o tempo
+            alpha = int(110 * 4 * t * (1 - t))     # sobe e some suavemente
+            r     = p["r"]
+            s     = pygame.Surface((r * 2, r * 2), pygame.SRCALPHA)
+            pygame.draw.circle(s, (*p["color"], alpha), (r, r), r)
+            surface.blit(s, (int(p["pos"].x) - r, int(p["pos"].y) - r))
 
     def _spawn_impact(self, pos: pygame.Vector2, element: str):
         color = ELEMENT_COLORS.get(element, WHITE)
@@ -310,20 +467,111 @@ class BattleScene(GameScene):
     def handle_event(self, event: pygame.event.Event):
         if event.type != pygame.KEYDOWN:
             return
-        if not self.finished and not self.battle.is_over():
-            if event.key in (pygame.K_a, pygame.K_SPACE) and not self._enemy_turn_pending:
-                self._launch_projectile(self.player_obj, self.enemy_obj,
-                                        is_player_attack=True)
-                self._enemy_turn_pending = True
-                self._enemy_turn_timer   = 1.0
-        if self.finished and event.key == pygame.K_RETURN:
-            player = self.manager.game.player
-            if not player.is_alive():
-                player.hp = player.max_hp
-            from meu_jogo.cenas.campo_de_treino import CampoDeTreinoScene
-            self.manager.scene_manager.change_scene(
-                CampoDeTreinoScene(self.manager))
 
+        # Voltar ao mapa ao terminar a batalha
+        if self.finished and event.key == pygame.K_RETURN:
+            self._voltar_ao_mapa()
+            return
+
+        # Navegacao no menu (so quando e turno do jogador)
+        if not self.finished and not self.battle.is_over() and not self._enemy_turn_pending:
+            if event.key in (pygame.K_UP, pygame.K_w):
+                self._menu_index = (self._menu_index - 1) % 4
+            elif event.key in (pygame.K_DOWN, pygame.K_s):
+                self._menu_index = (self._menu_index + 1) % 4
+            elif event.key == pygame.K_RETURN:
+                self._confirmar_acao()
+
+    def _confirmar_acao(self):
+        """Executa a acao selecionada no menu."""
+        idx = self._menu_index
+
+        if idx == 0:   # Atacar
+            self._launch_projectile(
+                self.player_obj, self.enemy_obj,
+                AttackAction(), is_player_attack=True)
+            self._iniciar_turno_inimigo(delay=1.0)
+
+        elif idx == 1:   # Especial
+            if self._special_action.can_use():
+                self._launch_projectile(
+                    self.player_obj, self.enemy_obj,
+                    self._special_action, is_player_attack=True)
+                self._iniciar_turno_inimigo(delay=1.0)
+                self.manager.notificacoes.adicionar(
+                    f"Ataque Especial! ({self._special_action.uses_left} usos restantes)",
+                    cor=(180, 80, 255), duracao=1.2)
+            else:
+                self.message = "Sem usos de Especial restantes!"
+
+        elif idx == 2:   # Defender
+            if self._defend_action.can_use():
+                self._defend_action.execute(self.battle.player, self.battle.enemy)
+                self.message = f"{self.battle.player.name} adotou postura defensiva!"
+                self.manager.notificacoes.adicionar(
+                    f"Defendendo! ({self._defend_action.uses_left} usos restantes)",
+                    cor=(100, 180, 255), duracao=1.2)
+                self._iniciar_turno_inimigo(delay=1.2)
+            else:
+                self.message = "Sem usos de Defender restantes!"
+
+        elif idx == 3:   # Curar
+            if self._heal_action.can_use():
+                result = self._heal_action.execute(self.battle.player, self.battle.enemy)
+                heal   = result["heal"]
+                self.message = f"{self.battle.player.name} se curou em {heal} HP!"
+                # Texto flutuante verde de cura
+                self._damage_texts.append({
+                    "txt":   f"+{heal}",
+                    "pos":   pygame.Vector2(
+                        self.player_obj.position.x + CharacterObject.SIZE // 2,
+                        self.player_obj.position.y),
+                    "vel":   pygame.Vector2(0, -60),
+                    "life":  1.0,
+                    "color": (80, 255, 120),
+                })
+                self.manager.notificacoes.adicionar(
+                    f"Curado! ({self._heal_action.uses_left} usos restantes)",
+                    cor=(80, 255, 120), duracao=1.2)
+                self.manager.score.reset_combo()
+                self._iniciar_turno_inimigo(delay=1.2)
+            else:
+                self.message = "Sem usos de Curar restantes!"
+
+    def _iniciar_turno_inimigo(self, delay: float = 1.0):
+        self._enemy_turn_pending = True
+        self._enemy_turn_timer   = delay
+
+    def _executar_turno_inimigo(self):
+        """Pergunta a IA qual acao usar e a executa."""
+        if self.battle.is_over():
+            return
+        action = self.battle.enemy_ai.choose_action(self.battle)
+
+        if isinstance(action, (AttackAction, SpecialAttackAction)):
+            self._launch_projectile(
+                self.enemy_obj, self.player_obj,
+                action, is_player_attack=False)
+
+        elif isinstance(action, HealAction):
+            result = action.execute(self.battle.enemy, self.battle.player)
+            heal   = result["heal"]
+            self.message = f"{self.battle.enemy.name} se recuperou em {heal} HP!"
+            self._damage_texts.append({
+                "txt":   f"+{heal}",
+                "pos":   pygame.Vector2(
+                    self.enemy_obj.position.x + CharacterObject.SIZE // 2,
+                    self.enemy_obj.position.y),
+                "vel":   pygame.Vector2(0, -60),
+                "life":  1.0,
+                "color": (80, 255, 120),
+            })
+
+        elif isinstance(action, DefendAction):
+            result = action.execute(self.battle.enemy, self.battle.player)
+            self.message = f"{self.battle.enemy.name} adotou postura defensiva!"
+
+    # -----------------------------------------------------------------------
     def update(self, dt: float):
         for obj in list(self.objects):
             obj.update(dt)
@@ -334,51 +582,104 @@ class BattleScene(GameScene):
             p["life"] -= dt
         self._particles = [p for p in self._particles if p["life"] > 0]
 
+        # Textos flutuantes de dano / cura
+        for t in self._damage_texts:
+            t["pos"] += t["vel"] * dt
+            t["life"] -= dt
+        self._damage_texts = [t for t in self._damage_texts if t["life"] > 0]
+
+        # Particulas ambientes
+        self._ambient_timer += dt
+        if self._ambient_timer >= 0.18:   # spawn a cada ~0.18s
+            self._ambient_timer = 0.0
+            self._spawn_ambient()
+        for p in self._ambient:
+            p["pos"] += p["vel"] * dt
+            p["vel"].x *= 0.97
+            p["life"]  -= dt
+        self._ambient = [p for p in self._ambient if p["life"] > 0]
+
+        # VFX temporais
+        if self._screen_shake > 0:
+            self._screen_shake = max(0.0, self._screen_shake - dt)
+        if self._super_flash > 0:
+            self._super_flash = max(0, self._super_flash - int(dt * 500))
+
         if self._enemy_turn_pending:
             self._enemy_turn_timer -= dt
             if self._enemy_turn_timer <= 0:
-                if not self.battle.is_over():
-                    self._launch_projectile(self.enemy_obj, self.player_obj,
-                                            is_player_attack=False)
                 self._enemy_turn_pending = False
+                self._executar_turno_inimigo()
 
+        # Animacao de morte antes de finalizar batalha
         if self.battle.is_over() and not self.finished:
-            self._handle_battle_end()
+            if not self._death_started:
+                self._death_started = True
+                winner = self.battle.get_winner()
+                if winner == self.manager.game.player:
+                    self.enemy_obj.start_death_anim()
+            elif self.enemy_obj.death_anim_done or not (
+                    self.battle.get_winner() == self.manager.game.player):
+                self._handle_battle_end()
 
     # -----------------------------------------------------------------------
     def draw(self, screen: pygame.Surface):
+        if self._screen_shake > 0:
+            tmp = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+            self._render(tmp)
+            ox = random.randint(-int(self._shake_amount), int(self._shake_amount))
+            oy = random.randint(-int(self._shake_amount) // 2,
+                                 int(self._shake_amount) // 2)
+            screen.fill((0, 0, 0))
+            screen.blit(tmp, (ox, oy))
+        else:
+            self._render(screen)
+
+    def _render(self, surface: pygame.Surface):
         # Fundo
         if self.bg_image:
-            scaled  = pygame.transform.scale(
+            scaled = pygame.transform.scale(
                 self.bg_image, (SCREEN_WIDTH, SCREEN_HEIGHT))
-            screen.blit(scaled, (0, 0))
+            surface.blit(scaled, (0, 0))
             overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
             overlay.fill((*self.bg_color, 175))
-            screen.blit(overlay, (0, 0))
+            surface.blit(overlay, (0, 0))
         else:
-            screen.fill(self.bg_color)
+            surface.fill(self.bg_color)
 
-        self._draw_arena(screen)
+        self._draw_arena(surface)
+        self._draw_ambient(surface)
 
-        # GameObjects (polimorfismo — Projectile e CharacterObject)
         for obj in self.objects:
-            obj.draw(screen)
+            obj.draw(surface)
 
-        # Partículas de impacto
+        # Particulas de impacto
         for p in self._particles:
             alpha = int(255 * max(p["life"], 0) / 0.7)
-            surf  = pygame.Surface((p["r"] * 2, p["r"] * 2), pygame.SRCALPHA)
-            pygame.draw.circle(surf, (*p["color"], alpha),
-                               (p["r"], p["r"]), p["r"])
-            screen.blit(surf,
-                (int(p["pos"].x) - p["r"], int(p["pos"].y) - p["r"]))
+            s = pygame.Surface((p["r"] * 2, p["r"] * 2), pygame.SRCALPHA)
+            pygame.draw.circle(s, (*p["color"], alpha), (p["r"], p["r"]), p["r"])
+            surface.blit(s, (int(p["pos"].x) - p["r"], int(p["pos"].y) - p["r"]))
+
+        # Flash de super efetivo
+        if self._super_flash > 0:
+            fs = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+            fs.fill((255, 255, 255, self._super_flash))
+            surface.blit(fs, (0, 0))
+
+        # Textos flutuantes de dano / cura
+        f_dmg = pygame.font.SysFont(None, 34)
+        for t in self._damage_texts:
+            alpha = int(255 * (t["life"] / 0.9))
+            s = f_dmg.render(t["txt"], True, t["color"])
+            s.set_alpha(alpha)
+            surface.blit(s, (int(t["pos"].x) - s.get_width() // 2,
+                              int(t["pos"].y)))
 
         # HUDs
-        self.player_obj.draw_hud(screen, 16, 16)
-        self.enemy_obj.draw_hud(screen, SCREEN_WIDTH - 174, 16)
-        self._draw_score_hud(screen)
-
-        self._draw_message_box(screen)
+        self.player_obj.draw_hud(surface, 16, 16)
+        self.enemy_obj.draw_hud(surface, SCREEN_WIDTH - 174, 16)
+        self._draw_score_hud(surface)
+        self._draw_message_box(surface)
 
     def render(self, screen: pygame.Surface):
         self.draw(screen)
@@ -391,19 +692,19 @@ class BattleScene(GameScene):
                                SIZE + 8, 10)
             pygame.draw.rect(screen, (60, 55, 80),  plat, border_radius=6)
             pygame.draw.rect(screen, (120, 110, 160), plat, 2, border_radius=6)
-        mid  = SCREEN_WIDTH // 2
-        div  = pygame.Surface((2, 300), pygame.SRCALPHA)
+        mid = SCREEN_WIDTH // 2
+        div = pygame.Surface((2, 300), pygame.SRCALPHA)
         div.fill((255, 255, 255, 40))
         screen.blit(div, (mid, 80))
 
     def _draw_score_hud(self, screen):
-        """Exibe pontuação atual da batalha e combo no centro-topo."""
+        """Exibe pontuacao atual da batalha e combo no centro-topo."""
         score = self.manager.score.get_battle_score()
         combo = self.manager.score.get_combo()
         f     = pygame.font.SysFont(None, 22)
 
         score_txt = f.render(f"Pts: {score}", True, (220, 220, 100))
-        cx = SCREEN_WIDTH // 2
+        cx  = SCREEN_WIDTH // 2
         bg  = pygame.Surface((score_txt.get_width() + 12, 18), pygame.SRCALPHA)
         bg.fill((0, 0, 0, 140))
         screen.blit(bg, (cx - score_txt.get_width() // 2 - 6, 80))
@@ -425,12 +726,55 @@ class BattleScene(GameScene):
         pygame.draw.rect(screen, (180, 180, 220), box, 2, border_radius=8)
 
         font_big = pygame.font.SysFont(None, 26)
-        font_sm  = pygame.font.SysFont(None, 22)
-        msg  = font_big.render(self.message, True, WHITE)
-        tip  = font_sm.render("A / ESPAÇO = atacar", True, (160, 160, 200))
-        screen.blit(msg, (box.x + 14, box.y + 14))
-        if not self.finished:
-            screen.blit(tip, (box.x + 14, box.y + 52))
+        msg = font_big.render(self.message, True, WHITE)
+        screen.blit(msg, (box.x + 14, box.y + 10))
+
+        if not self.finished and not self._enemy_turn_pending and not self.battle.is_over():
+            self._draw_battle_menu(screen, box)
+        elif self.finished:
+            fsm = pygame.font.SysFont(None, 22)
+            tip = fsm.render("ENTER = voltar ao mapa", True, (160, 200, 160))
+            screen.blit(tip, (box.x + 14, box.y + 62))
+
+    def _draw_battle_menu(self, screen, box: pygame.Rect):
+        """Renderiza o menu de 4 opcoes horizontalmente na caixa de mensagem."""
+        f = pygame.font.SysFont(None, 21)
+        # (usos restantes, usos maximos) — None = sem limite
+        usos_info = [
+            None,
+            (self._special_action.uses_left, SpecialAttackAction.MAX_USES),
+            (self._defend_action.uses_left,  DefendAction.MAX_USES),
+            (self._heal_action.uses_left,    HealAction.MAX_USES),
+        ]
+        item_w = (box.w - 16) // 4
+        y_row  = box.y + 42
+
+        for i, label in enumerate(_MENU_LABELS):
+            x_item = box.x + 8 + i * item_w
+            selecionado = (i == self._menu_index)
+
+            # Fundo do item selecionado
+            item_rect = pygame.Rect(x_item, y_row - 2, item_w - 4, 34)
+            if selecionado:
+                pygame.draw.rect(screen, (60, 60, 120), item_rect, border_radius=4)
+                pygame.draw.rect(screen, (180, 180, 255), item_rect, 2, border_radius=4)
+            else:
+                pygame.draw.rect(screen, (30, 30, 60), item_rect, border_radius=4)
+
+            # Disponibilidade
+            info    = usos_info[i]
+            sem_uso = info is not None and info[0] == 0
+            cor_txt = (120, 120, 120) if sem_uso else (
+                      (255, 255, 120) if selecionado else (200, 200, 200))
+
+            txt_label = f.render(label, True, cor_txt)
+            screen.blit(txt_label,
+                (x_item + (item_w - 4 - txt_label.get_width()) // 2, y_row + 2))
+
+            if info is not None:
+                txt_usos = f.render(f"{info[0]}/{info[1]}", True, (140, 140, 140))
+                screen.blit(txt_usos,
+                    (x_item + (item_w - 4 - txt_usos.get_width()) // 2, y_row + 18))
 
     def _draw_summary_panel(self, screen):
         """Painel de resultado exibido ao fim da batalha antes de voltar ao mapa."""
@@ -448,11 +792,9 @@ class BattleScene(GameScene):
 
         screen.blit(fb.render(self.message, True, WHITE), (x, y));  y += 24
 
-        # Linha divisória
         pygame.draw.line(screen, (100, 100, 130),
                          (x, y), (box.right - 14, y));  y += 6
 
-        # Breakdown em duas colunas
         col_esq = [
             (f"Inimigo derrotado:  +{s.get('base_inimigo', 0)}", (200, 220, 255)),
             (f"Bonus elemental:    +{s.get('bonus_elemental', 0)}", (255, 230, 80)),
@@ -494,19 +836,45 @@ class BattleScene(GameScene):
             self._last_summary = self.manager.score.finalizar_batalha(
                 self.battle.enemy, player.hp, player.max_hp)
             self.manager.game.handle_victory(self.battle.enemy)
+
             if self.manager.game.state == GameState.GAME_COMPLETE:
                 self.message = "Vitoria! Voce venceu o jogo!"
+                self.manager.notificacoes.adicionar(
+                    f"+{self._last_summary['score_batalha']} pontos!",
+                    cor=(255, 215, 0), duracao=3.0, destaque=True)
+                self.finished = True
+                # Vai para a VictoryScene apos o jogador pressionar ENTER
+                self._pending_victory = True
             else:
                 self.message = "Vitoria!"
-            self.manager.notificacoes.adicionar(
-                f"+{self._last_summary['score_batalha']} pontos!",
-                cor=(255, 215, 0),
-                duracao=3.0,
-                destaque=True,
-            )
+                self.manager.notificacoes.adicionar(
+                    f"+{self._last_summary['score_batalha']} pontos!",
+                    cor=(255, 215, 0), duracao=3.0, destaque=True)
+                self.finished = True
         else:
             self.manager.audio.play_sfx("defeat")
             self.manager.game.state = GameState.GAME_OVER
+            # Va direto para GameOverScene
+            from meu_jogo.cenas.game_over_scene import GameOverScene
+            total = self.manager.score.get_total_score()
+            self.manager.scene_manager.change_scene(
+                GameOverScene(self.manager, total_score=total))
+
+    def _voltar_ao_mapa(self):
+        """Chamado quando o jogador pressiona ENTER apos a batalha."""
+        if getattr(self, "_pending_victory", False):
+            from meu_jogo.cenas.victory_scene import VictoryScene
+            summ = {
+                "total":    self.manager.score.get_total_score(),
+                "batalhas": "todos",
+            }
+            self.manager.scene_manager.change_scene(
+                VictoryScene(self.manager, summary=summ))
+            return
+
+        player = self.manager.game.player
+        if not player.is_alive():
             player.hp = player.max_hp
-            self.message = "Derrota...  ENTER para voltar ao mapa."
-        self.finished = True
+        from meu_jogo.cenas.campo_de_treino import CampoDeTreinoScene
+        self.manager.scene_manager.change_scene(
+            CampoDeTreinoScene(self.manager))
