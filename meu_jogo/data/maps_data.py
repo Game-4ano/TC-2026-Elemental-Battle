@@ -2,6 +2,21 @@ import pygame
 from meu_jogo.core.map import (
     GameMap, Tile, GrassTile, WaterTile, FireTile,
     WindTile, WallTile, PortalTile,
+    # Água
+    IceTile, CrystalTile, RiverTile, WetSandTile,
+    # Fogo
+    LavaTile, HotRockTile, AshTile, EmberTile,
+    # Vento
+    CloudTile, SkyPathTile, WindyGrassTile, FeatherTile,
+    # Elétrico
+    SandTile, ChargedSandTile, MetalTile, LightningCrystalTile,
+    # Centro
+    FlowerGrassTile, BushTile, TreeTile, WoodPathTile,
+    # Caminhos
+    StoneRoadTile, WoodBridgeTile,
+    # Arenas
+    IceArenaTile, VolcanoFloorTile, SkyArenaTile, MetalArenaTile,
+    DeepWaterTile, SkyVoidTile,
 )
 from meu_jogo.data.characters_data import (
     slime, goblin, wolf, forest_guardian,
@@ -15,128 +30,287 @@ maps = [map1]
 
 
 # -----------------------------------------------------------------------
-# Tiles customizados
+# Aliases curtos para a matriz
 # -----------------------------------------------------------------------
-class ElectricFloorTile(Tile):
-    def __init__(self):
-        super().__init__("Chão Elétrico", "Electric", (200, 170, 0), True, 0)
-
-class WindFloorTile(Tile):
-    def __init__(self):
-        super().__init__("Chão Vento", "Air", (160, 210, 230), True, 0)
-
-class PathTile(Tile):
-    """Caminho de terra/pedra — cor neutra para corredores."""
-    def __init__(self):
-        super().__init__("Caminho", "None", (160, 130, 90), True, 0)
-
-class DirtTile(Tile):
-    def __init__(self):
-        super().__init__("Terra", "None", (120, 85, 50), True, 0)
+X  = "X"   # WallTile
+G  = "G"   # GrassTile
+g  = "g"   # FlowerGrassTile
+P  = "P"   # WaterTile (lago/rio decorativo sem dano)
+R  = "R"   # RiverTile (rio com dano leve)
+C  = "C"   # PathTile / StoneRoadTile
+D  = "D"   # DirtTile
+M  = "M"   # WoodPathTile
+T  = "T"   # TreeTile
+B2 = "b"   # BushTile
+# Água
+I  = "I"   # IceTile
+Y  = "Y"   # CrystalTile (azul, não-caminhável)
+S  = "S"   # WetSandTile
+# Fogo
+L  = "L"   # LavaTile
+H  = "H"   # HotRockTile
+Q  = "Q"   # AshTile
+K  = "K"   # EmberTile
+# Vento
+U  = "U"   # CloudTile
+Z  = "Z"   # SkyPathTile
+J  = "J"   # WindyGrassTile
+N  = "N"   # FeatherTile
+# Elétrico
+A2 = "d"   # SandTile
+E2 = "e"   # ChargedSandTile
+V2 = "v"   # MetalTile
+O2 = "o"   # LightningCrystalTile (não-caminhável)
+# Portais
+WP = "W"   # Portal Vento
+AP = "A"   # Portal Água
+EP = "E"   # Portal Elétrico
+FP = "F"   # Portal Fogo
+OP = "O"   # Saída (volta ao mundo aberto)
 
 
 # -----------------------------------------------------------------------
 # Tiles globais
 # -----------------------------------------------------------------------
 GLOBAL_TILE_TYPES = {
-    "G": GrassTile(),           # Verde escuro
-    "g": Tile("Grama Clara", "Grass", (90, 180, 80), True, 0),
-    "P": WaterTile(),           # Azul água
-    "B": FireTile(),            # Vermelho fogo
-    "V": WindTile(),            # Azul-claro vento
-    "X": WallTile(),            # Marrom parede/montanha
-    "D": DirtTile(),            # Terra marrom
-    "C": PathTile(),            # Caminho bege
+    "X": WallTile(),
+    "G": GrassTile(),
+    "g": FlowerGrassTile(),
+    "P": WaterTile(name="Lago", color=(30, 100, 200), damage=0),
+    "R": RiverTile(),
+    "C": StoneRoadTile(),
+    "D": Tile("Terra", "None", (120, 85, 50), True, 0),
+    "M": WoodPathTile(),
+    "T": TreeTile(),
+    "b": BushTile(),
+    # Água
+    "I": IceTile(),
+    "Y": CrystalTile(),
+    "S": WetSandTile(),
+    # Fogo
+    "L": LavaTile(),
+    "H": HotRockTile(),
+    "Q": AshTile(),
+    "K": EmberTile(),
+    # Vento
+    "U": CloudTile(),
+    "Z": SkyPathTile(),
+    "J": WindyGrassTile(),
+    "N": FeatherTile(),
+    # Elétrico
+    "d": SandTile(),
+    "e": ChargedSandTile(),
+    "v": MetalTile(),
+    "o": LightningCrystalTile(),
+    # Portais
+    "W": PortalTile("Portal Vento",    (120, 190, 230), "SALA_BATALHA_VENTO",    1, 1),
+    "A": PortalTile("Portal Água",     ( 20, 100, 220), "SALA_BATALHA_AGUA",     1, 1),
+    "E": PortalTile("Portal Elétrico", (200, 180,   0), "SALA_BATALHA_ELETRICA", 1, 1),
+    "F": PortalTile("Portal Fogo",     (220,  60,   0), "SALA_BATALHA_FOGO",     1, 1),
+    "O": PortalTile("Saída",           ( 50, 210, 100), "MUNDO_ABERTO",         20, 14),
     " ": GrassTile(),
-
-    # Portais (entradas das salas)
-    "A": PortalTile("Portal Água",    (20, 100, 220),  "SALA_BATALHA_AGUA",     1, 1),
-    "E": PortalTile("Portal Elétrico",(200, 180,  0),  "SALA_BATALHA_ELETRICA", 1, 1),
-    "W": PortalTile("Portal Vento",   (120, 190, 230), "SALA_BATALHA_VENTO",    1, 1),
-    "F": PortalTile("Portal Fogo",    (220,  60,  0),  "SALA_BATALHA_FOGO",     1, 1),
-    "O": PortalTile("Saída",          ( 50, 210, 100), "MUNDO_ABERTO",         10, 7),
 }
-
-# Tiles das salas internas
-WATER_ROOM_TILES  = {**GLOBAL_TILE_TYPES,
-    "P": WaterTile(name="Fundo Aquático", color=(20, 90, 200)),
-    "O": PortalTile("Saída", (50, 210, 100), "MUNDO_ABERTO", 10, 7),
-}
-ELEC_ROOM_TILES   = {**GLOBAL_TILE_TYPES,
-    "E": ElectricFloorTile(),
-    "O": PortalTile("Saída", (50, 210, 100), "MUNDO_ABERTO", 10, 7),
-}
-WIND_ROOM_TILES   = {**GLOBAL_TILE_TYPES,
-    "V": WindFloorTile(),
-    "O": PortalTile("Saída", (50, 210, 100), "MUNDO_ABERTO", 10, 7),
-}
-FIRE_ROOM_TILES   = {**GLOBAL_TILE_TYPES,
-    "B": FireTile(name="Lava", color=(210, 50, 0), damage=8),
-    "O": PortalTile("Saída", (50, 210, 100), "MUNDO_ABERTO", 10, 7),
-}
-
 
 # -----------------------------------------------------------------------
-# MUNDO ABERTO 20×20
+# MUNDO ABERTO 40×30
 # Layout:
-#   Topo   centro → sala VENTO  (W azul-claro)
-#   Meio   esquerda → sala ÁGUA (A azul)
-#   Meio   direita  → sala ELÉTRICA (E amarelo)
-#   Base   centro → sala FOGO  (F vermelho)
-#   Centro do mapa → grama verde (sem azul)
+#   Linhas  0- 7 → NORTE (Céu dos Ventos)
+#   Linhas  8-11 → corredor norte-centro
+#   Linhas 12-18 → CENTRO (vila/clareira)
+#   Linhas 19-22 → corredor sul-centro
+#   Linhas 23-29 → SUL (Terra Trovejante)
+#   Colunas 0- 8 → OESTE (Caverna das Águas)
+#   Colunas 9-30 → centro/leste
+#   Colunas 31-39 → LESTE (Vulcão)
+# Portal Vento   → col 20, lin 1
+# Portal Água    → col 1,  lin 15
+# Portal Elétrico→ col 20, lin 28
+# Portal Fogo    → col 38, lin 15
 # -----------------------------------------------------------------------
-W = "W"  # portal vento
-A = "A"  # portal água
-E = "E"  # portal elétrico
-F = "F"  # portal fogo
-X = "X"  # parede
-G = "G"  # grama
-g = "g"  # grama clara
-P = "P"  # água
-B = "B"  # fogo/brasa
-V = "V"  # vento
-C = "C"  # caminho
-D = "D"  # terra
 
+# Cada linha tem 40 colunas (índices 0–39)
 MUNDO_ABERTO_MATRIX = [
-#   0    1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   16   17   18   19
-   [X,   X,   X,   X,   X,   X,   X,   X,   X,   X,   X,   X,   X,   X,   X,   X,   X,   X,   X,   X],  # 0
-   [X,   P,   P,   D,   X,   V,   V,   V,   V,  "W",  V,   V,   V,   V,   X,   E,   E,   D,   X,   X],  # 1
-   [X,   P,   P,   D,   X,   V,   V,   V,   V,   V,   V,   V,   V,   V,   X,   E,   E,   D,   X,   X],  # 2
-   [X,   P,   P,   D,   C,   C,   C,   C,  "W",  C,   C,   C,   C,   C,   C,   E,   E,   D,   X,   X],  # 3  ← portal vento linha 3 col 8
-   [X,   P,   P,   D,   G,   G,   G,   G,   G,   G,   G,   G,   G,   G,   G,   E,   E,   D,   X,   X],  # 4
-   [X,   X,   X,   D,   G,   X,   X,   X,   X,   X,   X,   X,   X,   X,   G,   X,   X,   D,   X,   X],  # 5
-   [X,   P,   P,   G,   G,   g,   g,   g,   g,   g,   g,   g,   g,   g,   G,   E,   E,   G,   E,   X],  # 6
-   [X,  "A",  P,   G,   G,   g,   g,   g,   g,   g,   g,   g,   g,   g,   G,   E,  "E",  G,   E,   X],  # 7  ← portais laterais
-   [X,   P,   P,   G,   G,   g,   g,   g,   g,   g,   g,   g,   g,   g,   G,   E,   E,   G,   E,   X],  # 8
-   [X,   X,   X,   D,   G,   X,   X,   X,   X,   X,   X,   X,   X,   X,   G,   X,   X,   D,   X,   X],  # 9
-   [X,   P,   P,   D,   G,   G,   G,   G,   G,   G,   G,   G,   G,   G,   G,   E,   E,   D,   X,   X],  # 10
-   [X,   P,   P,   D,   C,   C,   C,   C,  "F",  C,   C,   C,   C,   C,   C,   E,   E,   D,   X,   X],  # 11 ← portal fogo
-   [X,   P,   P,   D,   X,   B,   B,   B,   B,   B,   B,   B,   B,   B,   X,   E,   E,   D,   X,   X],  # 12
-   [X,   P,   P,   D,   X,   B,   B,   B,   B,   B,   B,   B,   B,   B,   X,   E,   E,   D,   X,   X],  # 13
-   [X,   X,   X,   X,   X,   X,   X,   X,   X,   X,   X,   X,   X,   X,   X,   X,   X,   X,   X,   X],  # 14
+# col: 0   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18  19  20  21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36  37  38  39
+# REGIÃO NORTE — Céu dos Ventos (lin 0-7)
+  [X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X], # 0
+  [X,  U,  U,  U,  U,  Z,  Z,  Z,  Z,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U, "W", U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  X,  X,  X,  X,  X,  X,  X,  X,  X], # 1 ← Portal Vento
+  [X,  U,  J,  J,  U,  Z,  N,  N,  Z,  U,  J,  J,  J,  U,  U,  U,  J,  J,  U,  U,  U,  U,  J,  J,  U,  U,  J,  U,  U,  U,  U,  X,  X,  X,  X,  X,  X,  X,  X,  X], # 2
+  [X,  U,  J,  Z,  Z,  Z,  N,  N,  Z,  Z,  J,  J,  Z,  Z,  U,  U,  J,  J,  Z,  Z,  Z,  Z,  J,  J,  Z,  Z,  J,  Z,  U,  U,  U,  X,  X,  X,  X,  X,  X,  X,  X,  X], # 3
+  [X,  U,  J,  Z,  U,  Z,  U,  U,  Z,  U,  J,  J,  U,  Z,  U,  U,  J,  J,  U,  Z,  U,  Z,  J,  J,  U,  Z,  J,  Z,  U,  U,  U,  X,  X,  X,  X,  X,  X,  X,  X,  X], # 4
+  [X,  U,  U,  Z,  U,  U,  U,  U,  Z,  U,  U,  U,  U,  Z,  U,  U,  U,  U,  U,  Z,  U,  Z,  U,  U,  U,  Z,  U,  Z,  U,  U,  U,  X,  X,  X,  X,  X,  X,  X,  X,  X], # 5
+  [X,  U,  U,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  U,  U,  X,  X,  X,  X,  X,  X,  X,  X,  X], # 6 ← corredor norte
+  [X,  U,  U,  C,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  C,  U,  U,  X,  X,  X,  X,  X,  X,  X,  X,  X], # 7
+
+# CORREDOR Norte-Centro (lin 8-11)
+  [X,  G,  G,  C,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  C,  G,  G,  X,  X,  H,  H,  X,  X,  X,  X,  X], # 8
+  [X,  G,  G,  C,  G,  T,  G,  G,  G,  G,  T,  G,  G,  G,  G,  T,  G,  G,  G,  G,  T,  G,  G,  G,  G,  G,  G,  G,  C,  G,  G,  X,  H,  H,  H,  H,  X,  X,  X,  X], # 9
+  [X,  R,  R,  C,  G, "b", G,  G,  G, "b", G,  G, "b", G,  G,  G, "b", G,  G,  G,  G,  G, "b", G,  G,  G,  G,  G,  C,  G,  G,  H,  H,  Q,  Q,  H,  H,  X,  X,  X], # 10
+  [X,  P,  P,  C,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  C,  G,  G,  H,  Q,  Q,  Q,  Q,  H,  X,  X,  X], # 11
+
+# CENTRO — Vila/Clareira (lin 12-18)
+  [X,  P,  P,  M,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  M,  g,  g,  H,  Q,  L,  L,  Q,  H,  X,  X,  X], # 12
+  [X,  P,  P,  M,  g,  T,  g,  g,  g,  g,  T,  g,  g,  g,  g,  T,  g,  g,  g,  g,  T,  g,  g,  g,  g,  g,  g,  g,  M,  g,  g,  H,  K,  L,  L,  K,  H,  X,  X,  X], # 13
+  [X, "A", P,  M,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  M,  g,  g,  H,  K,  L,  L,  K, "F", X,  X,  X], # 14 ← Portal Água/Fogo
+  [X,  P,  R,  M,  g,  g, "b", g,  g, "b", g,  g, "b", g,  g,  g, "b", g,  g,  g,  g,  g, "b", g,  g,  g,  g,  g,  M,  g,  g,  H,  K,  L,  L,  K,  H,  X,  X,  X], # 15
+  [X,  P,  P,  M,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  M,  g,  g,  H,  Q,  L,  L,  Q,  H,  X,  X,  X], # 16
+  [X,  P,  P,  M,  g,  T,  g,  g,  g,  g,  T,  g,  g,  g,  g,  T,  g,  g,  g,  g,  T,  g,  g,  g,  g,  g,  g,  g,  M,  g,  g,  H,  H,  Q,  Q,  H,  H,  X,  X,  X], # 17
+  [X,  P,  P,  M,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  M,  g,  g,  X,  H,  H,  H,  H,  X,  X,  X,  X], # 18
+
+# CORREDOR Centro-Sul (lin 19-22)
+  [X,  P,  P,  C,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  C,  G,  G,  X,  X,  H,  H,  X,  X,  X,  X,  X], # 19
+  [X,  R,  P,  C,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  C,  G,  G,  X,  X,  X,  X,  X,  X,  X,  X,  X], # 20
+  [X,  P,  P,  C,  G,  T,  G,  G,  G,  G,  T,  G,  G,  G,  G,  T,  G,  G,  G,  G,  T,  G,  G,  G,  G,  G,  G,  G,  C,  G,  G,  X,  X,  X,  X,  X,  X,  X,  X,  X], # 21
+  [X,  P,  I,  C,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  C,  G,  G,  X,  X,  X,  X,  X,  X,  X,  X,  X], # 22
+
+# REGIÃO SUL — Terra Trovejante (lin 23-29)
+  [X,  I,  I,  C,  "d","d","d","d","d","d","d","d","d","d","d","d","d","d","d","d","e","d","d","d","d","d","d","d", C, "d","d", X,  X,  X,  X,  X,  X,  X,  X,  X], # 23
+  [X,  I,  I, "d","d","e","d","d","d","d","d","d","e","d","d","d","d","d","d","d","e","d","d","d","e","d","d","d","d","d","d", X,  X,  X,  X,  X,  X,  X,  X,  X], # 24
+  [X,  Y,  I, "d","d","d","d","o","d","d","d","d","d","o","d","d","d","d","d","d","d","d","d","d","d","o","d","d","d","d","d", X,  X,  X,  X,  X,  X,  X,  X,  X], # 25
+  [X,  I,  I, "d","e","d","d","d","d","d","d","d","e","d","d","d","d","d","d","d","E","d","d","d","d","d","d","d","e","d","d", X,  X,  X,  X,  X,  X,  X,  X,  X], # 26 ← Portal Elétrico col 20
+  [X,  I,  I, "d","d","d","d","d","d","d","d","d","d","d","d","d","d","d","d","d","e","d","d","d","d","d","d","d","d","d","d", X,  X,  X,  X,  X,  X,  X,  X,  X], # 27
+  [X,  I,  I, "d","d","e","d","d","d","d","o","d","d","d","d","o","d","d","d","d","e","d","d","d","d","o","d","d","d","d","d", X,  X,  X,  X,  X,  X,  X,  X,  X], # 28
+  [X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X], # 29
 ]
 
+# Região OESTE — Caverna das Águas (cols 0-2, já integradas acima)
+# mas vamos completar o mapa de água como overlay usando as colunas 0-2
+# As linhas 22-28 do oeste têm tiles I/Y  (IceTile/CrystalTile)
+# As linhas 8-11 do corredor têm R/P
+
 
 # -----------------------------------------------------------------------
-# Salas de batalha 7×7
+# Salas de batalha 12×10
 # -----------------------------------------------------------------------
-def _room(floor: str, has_damage_floor=False):
-    f = floor
-    return [
-        [X, X, X, X, X, X, X],
-        [X, f, f, f, f, f, X],
-        [X, f, f, f, f, f, X],
-        [X, f, f,"O", f, f, X],
-        [X, f, f, f, f, f, X],
-        [X, f, f, f, f, f, X],
-        [X, X, X, X, X, X, X],
-    ]
+def _build_themed_room(floor_tile, border_tile, deco_pattern, exit_row, exit_col):
+    """
+    Gera matriz 12×10 (12 cols, 10 linhas) com bordas, chão, decorações e saída.
+    deco_pattern: lista de (row, col, tile_key) para decorações internas
+    exit_row, exit_col: posição do portal de saída
+    """
+    rows, cols = 10, 12
+    room = [[border_tile if (r == 0 or r == rows-1 or c == 0 or c == cols-1)
+             else floor_tile
+             for c in range(cols)] for r in range(rows)]
+    for r, c, tk in deco_pattern:
+        if 0 < r < rows-1 and 0 < c < cols-1:
+            room[r][c] = tk
+    room[exit_row][exit_col] = "O"
+    return room
 
-SALA_BATALHA_AGUA_MATRIX     = _room("P")
-SALA_BATALHA_ELETRICA_MATRIX = _room("E")
-SALA_BATALHA_VENTO_MATRIX    = _room("V")
-SALA_BATALHA_FOGO_MATRIX     = _room("B")
+
+# --- SALA ÁGUA (Hydra) ---
+_AGUA_DECO = [
+    # Água profunda decorativa nas bordas internas
+    (1, 1,"w"), (1,10,"w"), (8, 1,"w"), (8,10,"w"),
+    (1, 2,"w"), (1, 9,"w"), (8, 2,"w"), (8, 9,"w"),
+    (2, 1,"w"), (2,10,"w"), (7, 1,"w"), (7,10,"w"),
+    # Cristais azuis nos cantos
+    (2, 2,"Y"), (2, 9,"Y"), (7, 2,"Y"), (7, 9,"Y"),
+    # Pequena poça central
+    (4, 5,"P"), (4, 6,"P"), (5, 5,"P"), (5, 6,"P"),
+]
+
+WATER_ROOM_TILES_BATTLE = {
+    "X": WallTile(),
+    "A": IceArenaTile(),
+    "w": DeepWaterTile(),
+    "Y": CrystalTile(),
+    "P": WaterTile(name="Poça Brilhante", color=(60, 140, 220), damage=0),
+    "O": PortalTile("Saída", (50, 210, 100), "MUNDO_ABERTO", 2, 14),  # col2, row14 — ao lado do portal Água
+}
+_agua_raw = _build_themed_room("A", "X", _AGUA_DECO, 1, 6)
+SALA_BATALHA_AGUA_MATRIX = _agua_raw
+
+
+# --- SALA FOGO (Magma Titan) ---
+_FOGO_DECO = [
+    # Lava nas bordas internas
+    (1, 1,"L"), (1,10,"L"), (8, 1,"L"), (8,10,"L"),
+    (1, 2,"L"), (1, 9,"L"), (8, 2,"L"), (8, 9,"L"),
+    (2, 1,"L"), (2,10,"L"), (7, 1,"L"), (7,10,"L"),
+    # Rochas de obsidiana no centro
+    (4, 5,"H"), (4, 6,"H"), (5, 5,"H"), (5, 6,"H"),
+    # Brasas espalhadas
+    (3, 3,"K"), (3, 8,"K"), (6, 3,"K"), (6, 8,"K"),
+    (2, 5,"K"), (7, 6,"K"),
+]
+
+FIRE_ROOM_TILES_BATTLE = {
+    "X": WallTile(),
+    "V": VolcanoFloorTile(),
+    "L": LavaTile(),
+    "H": HotRockTile(),
+    "K": EmberTile(),
+    "O": PortalTile("Saída", (50, 210, 100), "MUNDO_ABERTO", 35, 14),  # col35, row14 — ao lado do portal Fogo
+}
+_fogo_raw = _build_themed_room("V", "X", _FOGO_DECO, 8, 6)
+SALA_BATALHA_FOGO_MATRIX = _fogo_raw
+
+
+# --- SALA VENTO (Storm Eagle) ---
+_VENTO_DECO = [
+    # Vazio celeste nas bordas internas
+    (1, 1,"K"), (1,10,"K"), (8, 1,"K"), (8,10,"K"),
+    (1, 2,"K"), (1, 9,"K"), (8, 2,"K"), (8, 9,"K"),
+    (2, 1,"K"), (2,10,"K"), (7, 1,"K"), (7,10,"K"),
+    # Plataformas flutuantes decorativas
+    (3, 2,"Z"), (3, 9,"Z"), (6, 2,"Z"), (6, 9,"Z"),
+    # Penas
+    (2, 4,"N"), (2, 7,"N"), (7, 4,"N"), (7, 7,"N"),
+    (4, 2,"N"), (5, 9,"N"),
+]
+
+WIND_ROOM_TILES_BATTLE = {
+    "X": WallTile(),
+    "S": SkyArenaTile(),
+    "K": SkyVoidTile(),
+    "Z": SkyPathTile(),
+    "N": FeatherTile(),
+    "O": PortalTile("Saída", (50, 210, 100), "MUNDO_ABERTO", 20, 2),  # col20, row2 — abaixo do portal Vento
+}
+_vento_raw = _build_themed_room("S", "X", _VENTO_DECO, 1, 6)
+SALA_BATALHA_VENTO_MATRIX = _vento_raw
+
+
+# --- SALA ELÉTRICA (Thunder Beast) ---
+_ELEC_DECO = [
+    # Cristais elétricos nas bordas internas
+    (1, 1,"o"), (1,10,"o"), (8, 1,"o"), (8,10,"o"),
+    (2, 1,"o"), (2,10,"o"), (7, 1,"o"), (7,10,"o"),
+    # Areia carregada ao redor da arena
+    (1, 3,"e"), (1, 5,"e"), (1, 7,"e"), (1, 9,"e"),
+    (8, 3,"e"), (8, 5,"e"), (8, 7,"e"), (8, 9,"e"),
+    # Placas de metal central
+    (4, 5,"v"), (4, 6,"v"), (5, 5,"v"), (5, 6,"v"),
+    # Cristais decorativos internos
+    (3, 3,"o"), (3, 8,"o"), (6, 3,"o"), (6, 8,"o"),
+]
+
+ELEC_ROOM_TILES_BATTLE = {
+    "X": WallTile(),
+    "M": MetalArenaTile(),
+    "o": LightningCrystalTile(),
+    "e": ChargedSandTile(),
+    "v": MetalTile(),
+    "O": PortalTile("Saída", (50, 210, 100), "MUNDO_ABERTO", 20, 25),  # col20, row25 — acima do portal Elétrico
+}
+_elec_raw = _build_themed_room("M", "X", _ELEC_DECO, 8, 6)
+SALA_BATALHA_ELETRICA_MATRIX = _elec_raw
+
+
+# -----------------------------------------------------------------------
+# Tile types para salas (herdam GLOBAL + sobrescritas)
+# -----------------------------------------------------------------------
+def _make_room_tiles(battle_overrides):
+    base = dict(GLOBAL_TILE_TYPES)
+    base.update(battle_overrides)
+    return base
+
+
+WATER_ROOM_TILES  = _make_room_tiles(WATER_ROOM_TILES_BATTLE)
+FIRE_ROOM_TILES   = _make_room_tiles(FIRE_ROOM_TILES_BATTLE)
+WIND_ROOM_TILES   = _make_room_tiles(WIND_ROOM_TILES_BATTLE)
+ELEC_ROOM_TILES   = _make_room_tiles(ELEC_ROOM_TILES_BATTLE)
 
 
 # -----------------------------------------------------------------------
@@ -162,5 +336,37 @@ ALL_MAP_DATA = {
     "SALA_BATALHA_FOGO": {
         "matrix":     SALA_BATALHA_FOGO_MATRIX,
         "tile_types": FIRE_ROOM_TILES,
+    },
+}
+
+
+# -----------------------------------------------------------------------
+# Regiões para notificações de área (Tarefa 4.5)
+# -----------------------------------------------------------------------
+REGIONS = {
+    "caverna_aguas": {
+        "name": "Caverna das Águas",
+        "color": (80, 180, 255),
+        "tiles": [(c, r) for c in range(0, 4) for r in range(8, 23)],
+    },
+    "vulcao": {
+        "name": "Vulcão Ardente",
+        "color": (255, 100, 30),
+        "tiles": [(c, r) for c in range(31, 40) for r in range(8, 20)],
+    },
+    "ceu_ventos": {
+        "name": "Céu dos Ventos",
+        "color": (180, 220, 255),
+        "tiles": [(c, r) for c in range(0, 31) for r in range(0, 8)],
+    },
+    "terra_trovejante": {
+        "name": "Terra Trovejante",
+        "color": (220, 200, 50),
+        "tiles": [(c, r) for c in range(0, 31) for r in range(23, 30)],
+    },
+    "centro": {
+        "name": "Clareira Central",
+        "color": (100, 200, 100),
+        "tiles": [(c, r) for c in range(3, 31) for r in range(12, 19)],
     },
 }
