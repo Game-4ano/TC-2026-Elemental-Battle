@@ -102,3 +102,109 @@ class AnimatedSprite:
         frame = self.current_frame
         if frame:
             screen.blit(frame, (x, y))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  AnimationController — gerencia múltiplos estados de animação nomeados
+# ─────────────────────────────────────────────────────────────────────────────
+
+class AnimationController:
+    """
+    Gerencia estados de animação nomeados para um personagem.
+
+    Parâmetros
+    ----------
+    states  : dict  nome_estado → {anim_key, fps?, loop?}
+    scale   : fator de escala para todos os frames
+    flipped : espelha todos os frames horizontalmente
+
+    Exemplo
+    -------
+    ctrl = AnimationController({
+        "idle":      {"anim_key": "hero_idle",  "fps": 2,   "loop": True},
+        "walk_side": {"anim_key": "hero_walk",  "fps": 8,   "loop": True},
+        "attack":    {"anim_key": "hero_attack","fps": 8,   "loop": False},
+    }, scale=3)
+    ctrl.play("walk_side")
+    ctrl.update(dt)
+    ctrl.draw(screen, x, y)
+    """
+
+    def __init__(self, states: dict, scale: int = 3, flipped: bool = False):
+        self._scale   = scale
+        self._flipped = flipped
+        self._anims: dict[str, AnimatedSprite] = {}
+        self._state   = ""
+        self._current: AnimatedSprite | None = None
+
+        for name, cfg in states.items():
+            key  = cfg["anim_key"]
+            fps  = cfg.get("fps", 8.0)
+            loop = cfg.get("loop", True)
+            self._anims[name] = AnimatedSprite(
+                key, scale=scale, fps=fps, flipped=flipped, loop=loop)
+
+        if states:
+            self.play(next(iter(states)))
+
+    # ------------------------------------------------------------------
+    def play(self, state: str, force_restart: bool = False):
+        """Muda para o estado indicado. Se já está neste estado, não reinicia
+        a menos que force_restart=True."""
+        if state not in self._anims:
+            return
+        if state == self._state and not force_restart:
+            return
+        self._state   = state
+        self._current = self._anims[state]
+        if force_restart:
+            self._current.reset()
+
+    def update(self, dt: float):
+        if self._current:
+            self._current.update(dt)
+
+    def draw(self, screen: pygame.Surface, x: int, y: int):
+        if self._current:
+            self._current.draw(screen, x, y)
+
+    def reset(self):
+        if self._current:
+            self._current.reset()
+
+    # ------------------------------------------------------------------
+    @property
+    def current_state(self) -> str:
+        return self._state
+
+    @property
+    def is_finished(self) -> bool:
+        """True quando animação não-loop chegou ao último frame."""
+        if not self._current or self._current.loop:
+            return False
+        return self._current._index >= len(self._current._frames) - 1
+
+    @property
+    def current_frame(self) -> pygame.Surface | None:
+        return self._current.current_frame if self._current else None
+
+    @property
+    def width(self) -> int:
+        return self._current.width if self._current else 0
+
+    @property
+    def height(self) -> int:
+        return self._current.height if self._current else 0
+
+    # ------------------------------------------------------------------
+    @property
+    def flipped(self) -> bool:
+        return self._flipped
+
+    @flipped.setter
+    def flipped(self, value: bool):
+        if value == self._flipped:
+            return
+        self._flipped = value
+        for a in self._anims.values():
+            a.flipped = value

@@ -49,7 +49,7 @@ storm_eagle = Character(
     hp=130, damage=22, defense=6,
     element="Air", weakness="Electric",
     is_boss=True,
-    sprite_key="storm_raven",
+    sprite_key="storm_eagle",
 )
 
 magma_titan = Character(
@@ -57,7 +57,7 @@ magma_titan = Character(
     hp=160, damage=28, defense=8,
     element="Fire", weakness="Water",
     is_boss=True,
-    sprite_key="flame_hound",
+    sprite_key="magma_titan",
 )
 
 

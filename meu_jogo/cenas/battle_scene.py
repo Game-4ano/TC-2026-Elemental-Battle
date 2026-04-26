@@ -11,7 +11,7 @@ from meu_jogo.entidades.acoes import (
     Action, AttackAction, SpecialAttackAction, DefendAction, HealAction
 )
 from meu_jogo.midia.sprites.sprite_factory import get_sprite, get_animation
-from meu_jogo.midia.sprites.animated_sprite import AnimatedSprite
+from meu_jogo.midia.sprites.animated_sprite import AnimatedSprite, AnimationController
 
 ELEMENT_COLORS = {
     "Fire":     (255, 110,  30),
@@ -113,24 +113,34 @@ class CharacterObject(GameObject):
         # HP animado: interpola suavemente em direcao ao HP real
         self._hp_display: float = float(character.hp)
 
-        # Sprite estatico (fallback quando nao ha anim ativa)
+        # Sprite estático (fallback quando AnimationController não tem frames)
         self._sprite: pygame.Surface | None = self._load_sprite()
         self._sprite_flipped: pygame.Surface | None = (
             pygame.transform.flip(self._sprite, True, False)
             if self._sprite and not facing_right else None
         )
 
-        # Animacao continua de idle (respiracao)
-        idle_key = "hero_idle_breath" if facing_right else (
-            f"{getattr(character, 'sprite_key', '')}_idle")
-        self._idle_anim: AnimatedSprite | None = self._try_anim(
-            idle_key, fps=1.8, loop=True)
+        skey = getattr(character, "sprite_key", "") or ""
+        if facing_right:
+            states = {
+                "idle":   {"anim_key": "hero_idle_breath", "fps": 1.8,  "loop": True},
+                "attack": {"anim_key": "hero_attack",       "fps": 8.0,  "loop": False},
+                "hurt":   {"anim_key": "hero_hurt",         "fps": 6.0,  "loop": False},
+                "dying":  {"anim_key": "hero_idle_breath",  "fps": 1.8,  "loop": False},
+            }
+        else:
+            states = {
+                "idle":   {"anim_key": f"{skey}_idle",   "fps": 1.8,  "loop": True},
+                "attack": {"anim_key": f"{skey}_attack", "fps": 8.0,  "loop": False},
+                "hurt":   {"anim_key": f"{skey}_hurt",   "fps": 6.0,  "loop": False},
+                "dying":  {"anim_key": f"{skey}_death",  "fps": 3.5,  "loop": False},
+            }
+        self._ctrl = AnimationController(
+            states, scale=_SPRITE_SCALE, flipped=not facing_right)
 
-        # Animacao ativa (ataque / dano / morte)
         self._state          = self.IDLE
         self._state_timer    = 0.0
         self._state_duration = 0.0
-        self._anim: AnimatedSprite | None = None
 
     # ── Carregamento ──────────────────────────────────────────────────────────
 
@@ -140,48 +150,30 @@ class CharacterObject(GameObject):
             return None
         return get_sprite(key, scale=_SPRITE_SCALE)
 
-    def _try_anim(self, key: str, fps: float = 6.0,
-                  loop: bool = True) -> AnimatedSprite | None:
-        if not get_animation(key, scale=_SPRITE_SCALE):
-            return None
-        a = AnimatedSprite(key, scale=_SPRITE_SCALE, fps=fps, loop=loop)
-        if not self.facing_right:
-            a.flipped = True
-        return a
-
     # ── Triggers de estado ────────────────────────────────────────────────────
 
     def play_attack(self):
         """Inicia animacao de ataque (0.35s, nao-loop)."""
-        skey = getattr(self.character, "sprite_key", "")
-        key  = "hero_attack" if self.facing_right else f"{skey}_attack"
-        anim = self._try_anim(key, fps=8.0, loop=False)
-        if anim:
-            self._anim = anim
-            self._state = self.ATTACK
-            self._state_timer    = 0.0
-            self._state_duration = 0.35
+        self._ctrl.play("attack", force_restart=True)
+        self._state          = self.ATTACK
+        self._state_timer    = 0.0
+        self._state_duration = 0.35
 
     def take_hit(self):
-        """Flash + shake + animacao de hurt para o heroi."""
+        """Flash + shake + animacao de hurt."""
         self._shake_timer = 0.3
         self._flash_timer = 0.2
-        if self.facing_right:          # so o heroi tem hero_hurt
-            anim = self._try_anim("hero_hurt", fps=6.0, loop=False)
-            if anim:
-                self._anim = anim
-                self._state = self.HURT
-                self._state_timer    = 0.0
-                self._state_duration = 0.3
+        self._ctrl.play("hurt", force_restart=True)
+        self._state          = self.HURT
+        self._state_timer    = 0.0
+        self._state_duration = 0.3
 
     def start_death_anim(self):
-        """Inicia dissolucao do inimigo (0.9s)."""
-        skey = getattr(self.character, "sprite_key", "")
-        anim = self._try_anim(f"{skey}_death", fps=3.5, loop=False)
-        self._state = self.DYING
+        """Inicia dissolucao (0.9s)."""
+        self._ctrl.play("dying", force_restart=True)
+        self._state          = self.DYING
         self._state_timer    = 0.0
         self._state_duration = 0.9
-        self._anim = anim  # pode ser None → fade no sprite estatico
 
     @property
     def death_anim_done(self) -> bool:
@@ -190,7 +182,6 @@ class CharacterObject(GameObject):
     # ── Update ────────────────────────────────────────────────────────────────
 
     def update(self, dt: float):
-        # Shake / flash
         if self._shake_timer > 0:
             self._shake_timer -= dt
             self._shake_off = pygame.Vector2(
@@ -200,7 +191,6 @@ class CharacterObject(GameObject):
         if self._flash_timer > 0:
             self._flash_timer -= dt
 
-        # Interpola o HP exibido na barra em direcao ao HP real
         target = float(max(self.character.hp, 0))
         diff   = target - self._hp_display
         if abs(diff) > 0.5:
@@ -208,26 +198,20 @@ class CharacterObject(GameObject):
         else:
             self._hp_display = target
 
-        # Idle breathing
-        if self._state == self.IDLE and self._idle_anim:
-            self._idle_anim.update(dt)
-
-        # Animacao ativa
         if self._state != self.IDLE:
             self._state_timer += dt
-            if self._anim:
-                self._anim.update(dt)
             if self._state != self.DYING and self._state_timer >= self._state_duration:
                 self._state = self.IDLE
-                self._anim  = None
+                self._ctrl.play("idle")
+
+        self._ctrl.update(dt)
 
     # ── Draw ──────────────────────────────────────────────────────────────────
 
     def _current_surf(self) -> pygame.Surface | None:
-        if self._state != self.IDLE and self._anim:
-            return self._anim.current_frame
-        if self._idle_anim:
-            return self._idle_anim.current_frame
+        frame = self._ctrl.current_frame
+        if frame:
+            return frame
         return self._sprite_flipped if self._sprite_flipped else self._sprite
 
     def draw(self, screen: pygame.Surface):

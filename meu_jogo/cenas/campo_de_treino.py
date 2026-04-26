@@ -6,7 +6,7 @@ from meu_jogo.core.config import SCREEN_WIDTH, SCREEN_HEIGHT, TILE_SIZE
 from meu_jogo.core.map import PortalTile
 from meu_jogo.core.battle import Battle
 from meu_jogo.entidades.ai_entidade import SmartAI
-from meu_jogo.midia.sprites.animated_sprite import AnimatedSprite
+from meu_jogo.midia.sprites.animated_sprite import AnimationController
 from meu_jogo.data.maps_data import REGIONS
 
 
@@ -57,7 +57,12 @@ class CampoDeTreinoScene(GameScene):
         self._move_cooldown = 0.18
         self._move_timer    = 0.0
 
-        self._hero_anim = AnimatedSprite("hero_walk", scale=_MAP_SPRITE_SCALE, fps=8.0)
+        self._hero_ctrl = AnimationController({
+            "idle":       {"anim_key": "hero_idle",       "fps": 1.8, "loop": True},
+            "walk_side":  {"anim_key": "hero_walk",        "fps": 8.0, "loop": True},
+            "walk_back":  {"anim_key": "hero_walk_back",   "fps": 8.0, "loop": True},
+            "walk_front": {"anim_key": "hero_walk_front",  "fps": 8.0, "loop": True},
+        }, scale=_MAP_SPRITE_SCALE)
 
         # Região atual para notificações e tint
         self._current_region: str | None = None
@@ -136,11 +141,18 @@ class CampoDeTreinoScene(GameScene):
         else:
             self._move_timer = 0.0
 
-        self._hero_anim.flipped = self._facing_left
+        self._hero_ctrl.flipped = self._facing_left
         if moving:
-            self._hero_anim.update(dt)
+            if dy < 0:
+                self._hero_ctrl.play("walk_back")
+            elif dy > 0:
+                self._hero_ctrl.play("walk_front")
+            else:
+                self._hero_ctrl.play("walk_side")
+            self._hero_ctrl.update(dt)
         else:
-            self._hero_anim.reset()
+            self._hero_ctrl.play("idle")
+            self._hero_ctrl.update(dt)
 
         # Notificação de mudança de região
         new_region = self._detect_region()
@@ -268,13 +280,13 @@ class CampoDeTreinoScene(GameScene):
 
         self._draw_hero_shadow(screen, sx, sy)
 
-        sprite_w = self._hero_anim.width
-        sprite_h = self._hero_anim.height
+        sprite_w = self._hero_ctrl.width
+        sprite_h = self._hero_ctrl.height
         draw_x   = sx + (TILE_SIZE - sprite_w) // 2
         draw_y   = sy + (TILE_SIZE - sprite_h) // 2
 
         if sprite_w > 0:
-            self._hero_anim.draw(screen, draw_x, draw_y)
+            self._hero_ctrl.draw(screen, draw_x, draw_y)
         else:
             pygame.draw.rect(screen, (220, 70, 70),
                 (sx + 3, sy + 3, TILE_SIZE - 6, TILE_SIZE - 6), border_radius=6)

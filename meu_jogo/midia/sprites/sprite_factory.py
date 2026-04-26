@@ -28,6 +28,15 @@ import pygame
 import random as _random
 
 
+def _make_hurt_palette(palette: dict) -> dict:
+    """Cria variação avermelhada de uma paleta para o frame de dano."""
+    result = {}
+    for k, color in palette.items():
+        r, g, b = color
+        result[k] = (min(255, r + 90), max(0, g - 50), max(0, b - 50))
+    return result
+
+
 def _make_breathing_anim(pixels: list[str], palette: dict) -> list[tuple]:
     """Gera 2 frames de respiração: normal + sprite deslocado 1px para cima."""
     blank = "." * max(len(r) for r in pixels)
@@ -229,6 +238,67 @@ _HERO_HURT = [
     "..bHH...HHbb.",
     "..bbb...bbbb.",
     "..bbb...bbbb.",
+]
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  HERÓI — vista de costas (andando para cima no mapa)
+# ─────────────────────────────────────────────────────────────────────────────
+
+_HERO_BACK = [
+    "....cCCCCc....",
+    "...cCCCCCCc...",
+    "...CCCCCCC....",
+    "...SSSSSSS....",
+    "..BSSSSSSSB..",
+    "...SSSSSSS....",
+    "...SSSSSSS....",
+    "..BHHHHHHhB..",
+    "..BhHHHHHHB..",
+    "..BHHhhhHHHB.",
+    "..BHH...HHHB.",
+    "...HH...HHH..",
+    "..bHH...HHbb.",
+    "..bHH...HHbb.",
+    "..bbb...bbbb.",
+    "..bbb...bbbb.",
+]
+
+_HERO_BACK_WALK_A = [
+    "....cCCCCc....",
+    "...cCCCCCCc...",
+    "...CCCCCCC....",
+    "...SSSSSSS....",
+    "..BSSSSSSSB..",
+    "...SSSSSSS....",
+    "...SSSSSSS....",
+    "..BHHHHHHhB..",
+    "..BhHHHHHHB..",
+    "..BHHhhhHHHB.",
+    "..BHH...HHHB.",
+    "...HH...HHH..",
+    "..bHHb..HH...",
+    "..bHHbb.HH...",
+    "..bbbb..HHb..",
+    ".......bbbbb.",
+]
+
+_HERO_BACK_WALK_B = [
+    "....cCCCCc....",
+    "...cCCCCCCc...",
+    "...CCCCCCC....",
+    "...SSSSSSS....",
+    "..BSSSSSSSB..",
+    "...SSSSSSS....",
+    "...SSSSSSS....",
+    "..BHHHHHHhB..",
+    "..BhHHHHHHB..",
+    "..BHHhhhHHHB.",
+    "..BHH...HHHB.",
+    "...HH...HHH..",
+    "...HH..bHHb..",
+    "...HH.bbHHbb.",
+    "..bHH..bbbb..",
+    ".bbbbb.......",
 ]
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -513,6 +583,118 @@ _WOLF_PIXELS = [
 ]
 
 # ─────────────────────────────────────────────────────────────────────────────
+#  MAGMA TITAN  (boss, Fogo)
+# ─────────────────────────────────────────────────────────────────────────────
+
+_MAGMA_TITAN_PALETTE = {
+    'D': ( 60,  30,  10),
+    'd': ( 90,  50,  20),
+    'G': ( 80,  60,  40),
+    'g': (110,  90,  60),
+    'R': (200,  50,  10),
+    'r': (240,  80,  20),
+    'Y': (255, 180,  40),
+    'y': (255, 220, 100),
+    'B': ( 30,  10,   0),
+    'K': ( 15,   5,   0),
+}
+
+_MAGMA_TITAN_PIXELS = [
+    "....BDddddDB....",
+    "...BDdGggGdDB...",
+    "..BDdGgggGdDB...",
+    ".BDdGgYyyYgGdDB.",
+    "BDdGgRyyyyRgGdDB",
+    "BDdGgRRrrRRgGdDB",
+    "BDdGGgRrrRgGGdDB",
+    "BDdGgYrrrYgGGdDB",
+    "BDdGGgGgGgGGdDB.",
+    ".BDdGDdddDGdDB..",
+    "..BDdGdrdGdDB...",
+    "BDdGg.....gGdDB.",
+    "BDdG.......GdDB.",
+    "BD...........DB.",
+    "Bd...........dB.",
+    "................",
+]
+
+# Magma Titan attack: lava fists raised
+_MAGMA_TITAN_ATTACK_PIXELS = [
+    "YyY..BDddddDB.Yy",
+    "yYy.BDdGggGdDB.y",
+    "..BDdGgggGdDB...",
+    ".BDdGgYyyYgGdDB.",
+    "BDdGgRyyyyRgGdDB",
+    "BDdGgRRrrRRgGdDB",
+    "rBDdGGgRrRgGGdBr",
+    "YBDdGgYrYgGGdDBY",
+    "BDdGGgGgGgGGdDB.",
+    ".BDdGDdddDGdDB..",
+    "..BDdGdrdGdDB...",
+    "BDdGg.....gGdDB.",
+    "BDdG.......GdDB.",
+    "BD...........DB.",
+    "Bd...........dB.",
+    "................",
+]
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  STORM EAGLE  (boss, Vento/Elétrico)
+# ─────────────────────────────────────────────────────────────────────────────
+
+_STORM_EAGLE_PALETTE = {
+    'W': (200, 220, 255),
+    'w': (140, 160, 200),
+    'B': ( 20,  30,  60),
+    'Y': (240, 210,  10),
+    'y': (255, 245,  80),
+    'G': ( 80, 110, 180),
+    'E': ( 10,  10,  40),
+    'C': (180, 200, 235),
+    'Z': (255, 255, 200),
+    'R': (200, 150,  10),
+}
+
+_STORM_EAGLE_PIXELS = [
+    "....yYYYYYy.....",
+    ".WwwyYZZZYywwW..",
+    "WwwwBBBBBBBBwwwW",
+    "WwwBGGGGGGGGBwwW",
+    "WwBGGEEGGEEGGBwW",
+    "WwBGGGRRRGGGGBwW",
+    "WwBGGGGGGGGGBwwW",
+    ".WwBGGGGGGGBwwW.",
+    "..WwBGGGGGBwwW..",
+    ".WwwBGGGGGBwwwW.",
+    "WwwwBGgYygGBwwwW",
+    ".WwwBG.....GBwwW",
+    "..WwBR.....RBwW.",
+    "...WBR.....RBW..",
+    "....BR.....RB...",
+    "................",
+]
+
+# Storm Eagle attack: wings fully spread, lightning bolt
+_STORM_EAGLE_ATTACK_PIXELS = [
+    "yYZZZyYYYYYyZZZy",
+    "WwwwyYZZZYywwwwW",
+    "WwwwBBBBBBBBwwwW",
+    "WwwBGGGGGGGGBwwW",
+    "WwBGGEEGGEEGGBwW",
+    "WwBGGGRRRGGGGBwW",
+    "WwBGGGGYGGGGBwwW",
+    "WwwBGGGYGGGBwwW.",
+    "..WwBGGYGGBwwW..",
+    ".WwwBGgYygGBwwwW",
+    "WwwwBGgYygGBwwwW",
+    ".WwwBG.....GBwwW",
+    "..WwBR.....RBwW.",
+    "...WBR.....RBW..",
+    "....BR.....RB...",
+    "................",
+]
+
+# ─────────────────────────────────────────────────────────────────────────────
 #  FOREST GUARDIAN  (boss, Grama)
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -661,46 +843,64 @@ _FLAME_HOUND_ATTACK_PIXELS = [
 # ─────────────────────────────────────────────────────────────────────────────
 
 _SPRITE_DATA: dict[str, tuple[list[str], dict]] = {
-    "hero":            (_HERO_IDLE,         _HERO_PALETTE),
-    "slime":           (_SLIME_PIXELS,      _SLIME_PALETTE),
-    "ember_sprite":    (_EMBER_PIXELS,      _EMBER_PALETTE),
-    "leaf_wisp":       (_LEAF_PIXELS,       _LEAF_PALETTE),
-    "goblin":          (_GOBLIN_PIXELS,     _GOBLIN_PALETTE),
-    "flame_hound":     (_FLAME_HOUND_PIXELS,_FLAME_HOUND_PALETTE),
-    "storm_raven":     (_RAVEN_PIXELS,      _RAVEN_PALETTE),
-    "tide_crawler":    (_TIDE_PIXELS,       _TIDE_PALETTE),
-    "wolf":            (_WOLF_PIXELS,       _WOLF_PALETTE),
-    "forest_guardian": (_GUARDIAN_PIXELS,   _GUARDIAN_PALETTE),
-    "void_emperor":    (_VOID_PIXELS,       _VOID_PALETTE),
+    "hero":            (_HERO_IDLE,              _HERO_PALETTE),
+    "slime":           (_SLIME_PIXELS,           _SLIME_PALETTE),
+    "ember_sprite":    (_EMBER_PIXELS,           _EMBER_PALETTE),
+    "leaf_wisp":       (_LEAF_PIXELS,            _LEAF_PALETTE),
+    "goblin":          (_GOBLIN_PIXELS,          _GOBLIN_PALETTE),
+    "flame_hound":     (_FLAME_HOUND_PIXELS,     _FLAME_HOUND_PALETTE),
+    "storm_raven":     (_RAVEN_PIXELS,           _RAVEN_PALETTE),
+    "tide_crawler":    (_TIDE_PIXELS,            _TIDE_PALETTE),
+    "wolf":            (_WOLF_PIXELS,            _WOLF_PALETTE),
+    "forest_guardian": (_GUARDIAN_PIXELS,        _GUARDIAN_PALETTE),
+    "void_emperor":    (_VOID_PIXELS,            _VOID_PALETTE),
+    "magma_titan":     (_MAGMA_TITAN_PIXELS,     _MAGMA_TITAN_PALETTE),
+    "storm_eagle":     (_STORM_EAGLE_PIXELS,     _STORM_EAGLE_PALETTE),
 }
 
 def _gen_enemy_anims() -> dict[str, list[tuple]]:
     """
-    Gera automaticamente animações de idle (respiração) e death (dissolução)
+    Gera automaticamente idle (respiração), death (dissolução) e hurt
     para todos os sprites de inimigos registrados em _SPRITE_DATA.
     """
     result: dict[str, list[tuple]] = {}
     for key, (pixels, palette) in _SPRITE_DATA.items():
         if key == "hero":
             continue
+        hurt_palette = _make_hurt_palette(palette)
         result[f"{key}_idle"]  = _make_breathing_anim(pixels, palette)
         result[f"{key}_death"] = _make_death_frames(pixels, palette)
+        result[f"{key}_hurt"]  = [(pixels, hurt_palette)]
     return result
 
 
 # Animações: chave → lista ordenada de (pixels, palette)
 # O AnimatedSprite vai ciclar por esses frames automaticamente.
 _ANIMATION_DATA: dict[str, list[tuple[list[str], dict]]] = {
-    # ── Overworld ─────────────────────────────────────────────────────────────
+    # ── Overworld — herói direcional ──────────────────────────────────────────
     "hero_walk": [
-        (_HERO_IDLE,   _HERO_PALETTE),
-        (_HERO_WALK_A, _HERO_PALETTE),
-        (_HERO_WALK_C, _HERO_PALETTE),
-        (_HERO_WALK_B, _HERO_PALETTE),
-        (_HERO_WALK_C, _HERO_PALETTE),
+        (_HERO_IDLE,        _HERO_PALETTE),
+        (_HERO_WALK_A,      _HERO_PALETTE),
+        (_HERO_WALK_C,      _HERO_PALETTE),
+        (_HERO_WALK_B,      _HERO_PALETTE),
+        (_HERO_WALK_C,      _HERO_PALETTE),
+    ],
+    "hero_walk_front": [   # alias de hero_walk (mesmo sentido — face para frente)
+        (_HERO_IDLE,        _HERO_PALETTE),
+        (_HERO_WALK_A,      _HERO_PALETTE),
+        (_HERO_WALK_C,      _HERO_PALETTE),
+        (_HERO_WALK_B,      _HERO_PALETTE),
+        (_HERO_WALK_C,      _HERO_PALETTE),
+    ],
+    "hero_walk_back": [    # herói andando para cima (de costas)
+        (_HERO_BACK,        _HERO_PALETTE),
+        (_HERO_BACK_WALK_A, _HERO_PALETTE),
+        (_HERO_BACK,        _HERO_PALETTE),
+        (_HERO_BACK_WALK_B, _HERO_PALETTE),
+        (_HERO_BACK,        _HERO_PALETTE),
     ],
     "hero_idle": [
-        (_HERO_IDLE, _HERO_PALETTE),
+        (_HERO_IDLE,        _HERO_PALETTE),
     ],
     # ── Batalha — herói ───────────────────────────────────────────────────────
     "hero_idle_breath": [
@@ -716,18 +916,26 @@ _ANIMATION_DATA: dict[str, list[tuple[list[str], dict]]] = {
     ],
     # ── Batalha — bosses (frames de ataque específicos) ───────────────────────
     "tide_crawler_attack": [
-        (_TIDE_PIXELS,             _TIDE_PALETTE),
-        (_TIDE_ATTACK_PIXELS,      _TIDE_PALETTE),
+        (_TIDE_PIXELS,               _TIDE_PALETTE),
+        (_TIDE_ATTACK_PIXELS,        _TIDE_PALETTE),
     ],
     "storm_raven_attack": [
-        (_RAVEN_PIXELS,            _RAVEN_PALETTE),
-        (_RAVEN_ATTACK_PIXELS,     _RAVEN_PALETTE),
+        (_RAVEN_PIXELS,              _RAVEN_PALETTE),
+        (_RAVEN_ATTACK_PIXELS,       _RAVEN_PALETTE),
     ],
     "flame_hound_attack": [
         (_FLAME_HOUND_PIXELS,        _FLAME_HOUND_PALETTE),
         (_FLAME_HOUND_ATTACK_PIXELS, _FLAME_HOUND_PALETTE),
     ],
-    # ── Batalha — inimigos (idle respiração + morte, gerados automaticamente) ─
+    "magma_titan_attack": [
+        (_MAGMA_TITAN_PIXELS,        _MAGMA_TITAN_PALETTE),
+        (_MAGMA_TITAN_ATTACK_PIXELS, _MAGMA_TITAN_PALETTE),
+    ],
+    "storm_eagle_attack": [
+        (_STORM_EAGLE_PIXELS,        _STORM_EAGLE_PALETTE),
+        (_STORM_EAGLE_ATTACK_PIXELS, _STORM_EAGLE_PALETTE),
+    ],
+    # ── Batalha — inimigos (idle, death, hurt — gerados automaticamente) ──────
     **_gen_enemy_anims(),
 }
 

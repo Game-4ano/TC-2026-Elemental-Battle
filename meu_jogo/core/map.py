@@ -14,6 +14,11 @@ class Stage:
 # Tiles
 # ---------------------------------------------------------------------------
 class Tile:
+    # Subclasses que possuem pixel art em tile_sprites.py definem esta chave.
+    # None = sem sprite, usa draw por primitivas como fallback.
+    tile_sprite_key: str | None = None
+    tile_sprite_fps: float = 2.0   # frames por segundo para tiles animados
+
     def __init__(self, name, element, color, is_walkable, damage_on_step=0):
         self.name           = name
         self.element        = element
@@ -25,15 +30,41 @@ class Tile:
         if self.damage_on_step > 0:
             player.take_damage(self.damage_on_step)
 
+    def _try_draw_sprite(self, surface, x, y, size, offset_x, offset_y) -> bool:
+        """Tenta desenhar sprite pixel art. Retorna True se sucesso."""
+        if not self.tile_sprite_key:
+            return False
+        try:
+            from meu_jogo.midia.sprites.tile_sprites import get_tile_sprite, get_tile_frame_count
+            n = get_tile_frame_count(self.tile_sprite_key)
+            if n == 0:
+                return False
+            frame = int(pygame.time.get_ticks() / (1000.0 / self.tile_sprite_fps)) % n
+            spr = get_tile_sprite(self.tile_sprite_key, frame)
+            if spr is None:
+                return False
+            rx = x * size - int(offset_x)
+            ry = y * size - int(offset_y)
+            if spr.get_width() != size or spr.get_height() != size:
+                spr = pygame.transform.scale(spr, (size, size))
+            surface.blit(spr, (rx, ry))
+            return True
+        except Exception:
+            return False
+
     def draw(self, surface, x, y, size, offset_x=0, offset_y=0):
-        rect = pygame.Rect(x * size - offset_x, y * size - offset_y, size, size)
+        if self._try_draw_sprite(surface, x, y, size, offset_x, offset_y):
+            return
+        rect = pygame.Rect(x * size - int(offset_x), y * size - int(offset_y), size, size)
         pygame.draw.rect(surface, self.color, rect)
-        # Borda sutil
         border = tuple(max(c - 30, 0) for c in self.color)
         pygame.draw.rect(surface, border, rect, 1)
 
 
 class WaterTile(Tile):
+    tile_sprite_key = "water"
+    tile_sprite_fps = 1.5
+
     def __init__(self, name="Poça", color=(30, 100, 200), damage=5):
         super().__init__(name, "Water", color, True, damage)
 
@@ -42,9 +73,10 @@ class WaterTile(Tile):
         player.take_damage(dmg)
 
     def draw(self, surface, x, y, size, offset_x=0, offset_y=0):
-        rect = pygame.Rect(x * size - offset_x, y * size - offset_y, size, size)
+        if self._try_draw_sprite(surface, x, y, size, offset_x, offset_y):
+            return
+        rect = pygame.Rect(x * size - int(offset_x), y * size - int(offset_y), size, size)
         pygame.draw.rect(surface, self.color, rect)
-        # Reflexo de água
         lighter = (min(self.color[0]+40,255), min(self.color[1]+40,255), min(self.color[2]+50,255))
         wave_y  = rect.y + size // 3
         pygame.draw.line(surface, lighter, (rect.x+3, wave_y), (rect.x + size//2, wave_y), 1)
@@ -69,13 +101,16 @@ class FireTile(Tile):
 
 
 class GrassTile(Tile):
+    tile_sprite_key = "grass"
+
     def __init__(self, name="Grama", color=(55, 140, 55)):
         super().__init__(name, "Grass", color, True, 0)
 
     def draw(self, surface, x, y, size, offset_x=0, offset_y=0):
-        rect = pygame.Rect(x * size - offset_x, y * size - offset_y, size, size)
+        if self._try_draw_sprite(surface, x, y, size, offset_x, offset_y):
+            return
+        rect = pygame.Rect(x * size - int(offset_x), y * size - int(offset_y), size, size)
         pygame.draw.rect(surface, self.color, rect)
-        # Textura de grama — riscos verticais sutis
         stripe = (max(self.color[0]-15,0), min(self.color[1]+20,255), max(self.color[2]-10,0))
         for i in range(3):
             sx = rect.x + size // 4 * (i + 1)
@@ -99,13 +134,16 @@ class WindTile(Tile):
 
 
 class WallTile(Tile):
+    tile_sprite_key = "rock"
+
     def __init__(self, name="Montanha", color=(90, 60, 30)):
         super().__init__(name, "None", color, False, 0)
 
     def draw(self, surface, x, y, size, offset_x=0, offset_y=0):
-        rect = pygame.Rect(x * size - offset_x, y * size - offset_y, size, size)
+        if self._try_draw_sprite(surface, x, y, size, offset_x, offset_y):
+            return
+        rect = pygame.Rect(x * size - int(offset_x), y * size - int(offset_y), size, size)
         pygame.draw.rect(surface, self.color, rect)
-        # Sombra superior para dar volume
         top_color = (min(self.color[0]+30,255), min(self.color[1]+20,255), min(self.color[2]+10,255))
         top_rect  = pygame.Rect(rect.x, rect.y, rect.w, rect.h // 3)
         pygame.draw.rect(surface, top_color, top_rect)
@@ -204,6 +242,8 @@ class LavaTile(Tile):
 
 
 class HotRockTile(Tile):
+    tile_sprite_key = "hot_rock"
+
     def __init__(self):
         super().__init__("Rocha Vulcânica", "Fire", (50, 30, 20), True, 0)
 
@@ -222,6 +262,8 @@ class HotRockTile(Tile):
 
 
 class AshTile(Tile):
+    tile_sprite_key = "ash"
+
     def __init__(self):
         super().__init__("Cinza", "Fire", (140, 130, 120), True, 0)
 
@@ -326,6 +368,8 @@ class FeatherTile(Tile):
 # Tiles temáticos — Região Elétrica (Sul)
 # ---------------------------------------------------------------------------
 class SandTile(Tile):
+    tile_sprite_key = "sand"
+
     def __init__(self):
         super().__init__("Areia", "Electric", (210, 190, 100), True, 0)
 
@@ -392,11 +436,15 @@ class LightningCrystalTile(Tile):
 # Tiles temáticos — Região Centro
 # ---------------------------------------------------------------------------
 class FlowerGrassTile(Tile):
+    tile_sprite_key = "flower_grass"
+
     def __init__(self):
         super().__init__("Grama Florida", "Grass", (60, 150, 60), True, 0)
 
     def draw(self, surface, x, y, size, offset_x=0, offset_y=0):
-        rect = pygame.Rect(x * size - offset_x, y * size - offset_y, size, size)
+        if self._try_draw_sprite(surface, x, y, size, offset_x, offset_y):
+            return
+        rect = pygame.Rect(x * size - int(offset_x), y * size - int(offset_y), size, size)
         pygame.draw.rect(surface, self.color, rect)
         stripe = (40, 120, 40)
         for i in range(3):
@@ -411,11 +459,15 @@ class FlowerGrassTile(Tile):
 
 
 class BushTile(Tile):
+    tile_sprite_key = "bush"
+
     def __init__(self):
         super().__init__("Arbusto", "Grass", (30, 100, 30), False, 0)
 
     def draw(self, surface, x, y, size, offset_x=0, offset_y=0):
-        rect = pygame.Rect(x * size - offset_x, y * size - offset_y, size, size)
+        if self._try_draw_sprite(surface, x, y, size, offset_x, offset_y):
+            return
+        rect = pygame.Rect(x * size - int(offset_x), y * size - int(offset_y), size, size)
         pygame.draw.rect(surface, (40, 80, 20), rect)
         for ox, oy, r in [(-4, 0, 7), (4, -2, 6), (0, 4, 6), (-3, -3, 5)]:
             cx2 = rect.centerx + ox
@@ -426,16 +478,18 @@ class BushTile(Tile):
 
 
 class TreeTile(Tile):
+    tile_sprite_key = "tree"
+
     def __init__(self):
         super().__init__("Árvore", "Grass", (30, 80, 20), False, 0)
 
     def draw(self, surface, x, y, size, offset_x=0, offset_y=0):
-        rect = pygame.Rect(x * size - offset_x, y * size - offset_y, size, size)
+        if self._try_draw_sprite(surface, x, y, size, offset_x, offset_y):
+            return
+        rect = pygame.Rect(x * size - int(offset_x), y * size - int(offset_y), size, size)
         pygame.draw.rect(surface, (20, 60, 10), rect)
-        # Tronco
         trunk_r = pygame.Rect(rect.centerx - 3, rect.centery, 6, size // 2)
         pygame.draw.rect(surface, (100, 60, 20), trunk_r)
-        # Copa
         pygame.draw.circle(surface, (40, 140, 30), (rect.centerx, rect.centery - 2), size // 3)
         pygame.draw.circle(surface, (60, 170, 40), (rect.centerx - 3, rect.centery - 4), size // 5)
         pygame.draw.circle(surface, (35, 120, 25), (rect.centerx + 3, rect.centery - 3), size // 5)
@@ -443,6 +497,8 @@ class TreeTile(Tile):
 
 
 class WoodPathTile(Tile):
+    tile_sprite_key = "wood_path"
+
     def __init__(self):
         super().__init__("Caminho de Madeira", "None", (160, 100, 50), True, 0)
 
@@ -460,6 +516,8 @@ class WoodPathTile(Tile):
 # Tiles de caminho conectivo
 # ---------------------------------------------------------------------------
 class StoneRoadTile(Tile):
+    tile_sprite_key = "stone_road"
+
     def __init__(self):
         super().__init__("Estrada de Pedra", "None", (180, 175, 165), True, 0)
 
@@ -473,6 +531,8 @@ class StoneRoadTile(Tile):
 
 
 class WoodBridgeTile(Tile):
+    tile_sprite_key = "wood_bridge"
+
     def __init__(self):
         super().__init__("Ponte de Madeira", "None", (140, 90, 45), True, 0)
 
