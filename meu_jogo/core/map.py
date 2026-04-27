@@ -648,6 +648,165 @@ class SkyVoidTile(Tile):
         pygame.draw.rect(surface, (70, 110, 170), rect, 1)
 
 
+# ---------------------------------------------------------------------------
+# Tiles decorativos — Salas de batalha
+# ---------------------------------------------------------------------------
+class IceStalactiteTile(Tile):
+    def __init__(self):
+        super().__init__("Estalactite de Gelo", "Water", (140, 200, 230), False, 0)
+
+    def draw(self, surface, x, y, size, offset_x=0, offset_y=0):
+        import math
+        rect = pygame.Rect(x * size - offset_x, y * size - offset_y, size, size)
+        pygame.draw.rect(surface, (100, 160, 200), rect)
+        t = pygame.time.get_ticks() / 1000.0
+        for i in range(3):
+            tip_x  = rect.x + size // 4 * (i + 1)
+            height = size // 2 + int(4 * abs(math.sin(t * 0.5 + i + x)))
+            pts    = [(tip_x - 4, rect.y + 2), (tip_x + 4, rect.y + 2),
+                      (tip_x, rect.y + height)]
+            pygame.draw.polygon(surface, (190, 230, 255), pts)
+            pygame.draw.polygon(surface, (140, 200, 240), pts, 1)
+        pygame.draw.rect(surface, (80, 140, 190), rect, 1)
+
+
+class BubbleTile(Tile):
+    def __init__(self):
+        super().__init__("Bolhas", "Water", (20, 80, 180), True, 0)
+
+    def draw(self, surface, x, y, size, offset_x=0, offset_y=0):
+        import math
+        rect = pygame.Rect(x * size - offset_x, y * size - offset_y, size, size)
+        pygame.draw.rect(surface, (15, 60, 150), rect)
+        t = pygame.time.get_ticks() / 1000.0
+        for i in range(3):
+            phase  = (t * 0.8 + i * 0.7 + x * 0.3) % 1.0
+            bx2    = rect.x + (i * 9 + x * 5) % (size - 6) + 3
+            by2    = rect.y + size - int(phase * size)
+            r      = int(2 + 2 * abs(math.sin(t * 1.2 + i)))
+            alpha2 = int(180 * (1 - phase))
+            s      = pygame.Surface((r * 2, r * 2), pygame.SRCALPHA)
+            pygame.draw.circle(s, (100, 180, 255, alpha2), (r, r), r)
+            pygame.draw.circle(s, (200, 240, 255, alpha2 // 2), (r, r), r, 1)
+            surface.blit(s, (bx2 - r, by2 - r))
+        pygame.draw.rect(surface, (10, 40, 120), rect, 1)
+
+
+class LavaDropTile(Tile):
+    def __init__(self):
+        super().__init__("Pingo de Lava", "Fire", (80, 20, 5), True, 2)
+
+    def draw(self, surface, x, y, size, offset_x=0, offset_y=0):
+        import math
+        rect = pygame.Rect(x * size - offset_x, y * size - offset_y, size, size)
+        pygame.draw.rect(surface, (55, 15, 3), rect)
+        t = pygame.time.get_ticks() / 1000.0
+        for i in range(2):
+            phase  = (t * 1.2 + i * 0.6 + y * 0.4) % 1.0
+            dx2    = (i * 11 + x * 7) % (size - 8) + 4
+            dy2    = int(phase * (size - 4))
+            cv     = int(200 + 55 * abs(math.sin(t * 3 + i)))
+            s      = pygame.Surface((6, 8), pygame.SRCALPHA)
+            pts    = [(3, 0), (6, 5), (3, 8), (0, 5)]
+            pygame.draw.polygon(s, (cv, cv // 3, 0, 200), pts)
+            surface.blit(s, (rect.x + dx2 - 3, rect.y + dy2 - 4))
+        pygame.draw.rect(surface, (40, 8, 0), rect, 1)
+
+
+class CircuitFloorTile(Tile):
+    def __init__(self):
+        super().__init__("Chão de Circuito", "Electric", (30, 38, 50), True, 0)
+
+    def draw(self, surface, x, y, size, offset_x=0, offset_y=0):
+        import math
+        rect = pygame.Rect(x * size - offset_x, y * size - offset_y, size, size)
+        pygame.draw.rect(surface, self.color, rect)
+        t = pygame.time.get_ticks() / 1000.0
+        # Linhas de circuito estáticas
+        cx2, cy2 = rect.x + size // 2, rect.y + size // 2
+        pygame.draw.line(surface, (0, 80, 60), (rect.x, cy2), (rect.right, cy2), 1)
+        pygame.draw.line(surface, (0, 80, 60), (cx2, rect.y), (cx2, rect.bottom), 1)
+        # Nó central pulsante
+        pulse = abs(math.sin(t * 2.5 + x * 0.4 + y * 0.3))
+        cv    = int(60 + 140 * pulse)
+        pygame.draw.circle(surface, (0, cv, cv // 2), (cx2, cy2), 3)
+        # Pulsos viajando pelas linhas
+        prog = (t * 1.8 + x * 0.25 + y * 0.2) % 1.0
+        px2  = rect.x + int(prog * size)
+        pygame.draw.circle(surface, (0, 200, 120), (px2, cy2), 2)
+        pygame.draw.rect(surface, (20, 55, 40), rect, 1)
+
+
+class NeonBorderTile(Tile):
+    def __init__(self):
+        super().__init__("Tubo Neon", "Electric", (20, 20, 30), False, 0)
+
+    def draw(self, surface, x, y, size, offset_x=0, offset_y=0):
+        import math
+        rect = pygame.Rect(x * size - offset_x, y * size - offset_y, size, size)
+        pygame.draw.rect(surface, (15, 15, 25), rect)
+        t   = pygame.time.get_ticks() / 1000.0
+        gv  = int(100 + 155 * abs(math.sin(t * 2.0 + x * 0.5 + y * 0.4)))
+        pygame.draw.rect(surface, (0, gv, gv // 3),
+                         rect.inflate(-6, -6), 2, border_radius=3)
+        pygame.draw.rect(surface, (10, 10, 20), rect, 1)
+
+
+# ---------------------------------------------------------------------------
+# Tiles temáticos — Região Sombra
+# ---------------------------------------------------------------------------
+class VoidFloorTile(Tile):
+    def __init__(self):
+        super().__init__("Chão do Vazio", "Dark", (15, 8, 28), True, 0)
+
+    def draw(self, surface, x, y, size, offset_x=0, offset_y=0):
+        import math
+        rect = pygame.Rect(x * size - offset_x, y * size - offset_y, size, size)
+        pygame.draw.rect(surface, self.color, rect)
+        t = pygame.time.get_ticks() / 1000.0
+        for i in range(3):
+            px2 = rect.x + (i * 9 + x * 5) % (size - 4) + 2
+            py2 = rect.y + (i * 7 + y * 3) % (size - 4) + 2
+            pulse = abs(math.sin(t * 2.5 + i + x * 0.4 + y * 0.3))
+            r = int(1 + 2 * pulse)
+            cv = int(80 + 120 * pulse)
+            pygame.draw.circle(surface, (cv // 2, 0, cv), (px2, py2), r)
+        pygame.draw.rect(surface, (30, 5, 50), rect, 1)
+
+
+class ShadowCrystalTile(Tile):
+    def __init__(self):
+        super().__init__("Cristal das Sombras", "Dark", (60, 10, 100), False, 0)
+
+    def draw(self, surface, x, y, size, offset_x=0, offset_y=0):
+        import math
+        rect = pygame.Rect(x * size - offset_x, y * size - offset_y, size, size)
+        pygame.draw.rect(surface, (10, 3, 20), rect)
+        t = pygame.time.get_ticks() / 1000.0
+        glow = int(80 + 120 * abs(math.sin(t * 1.8 + x + y)))
+        cx2, cy2 = rect.centerx, rect.centery
+        pts = [(cx2, rect.y + 2), (rect.x + size - 4, cy2 - 2),
+               (cx2, rect.y + size - 2), (rect.x + 4, cy2 + 2)]
+        pygame.draw.polygon(surface, (glow // 2, 0, glow), pts)
+        pygame.draw.polygon(surface, (180, 100, 255), pts, 1)
+
+
+class DarkMistTile(Tile):
+    def __init__(self):
+        super().__init__("Névoa Sombria", "Dark", (25, 10, 40), True, 0)
+
+    def draw(self, surface, x, y, size, offset_x=0, offset_y=0):
+        import math
+        rect = pygame.Rect(x * size - offset_x, y * size - offset_y, size, size)
+        pygame.draw.rect(surface, self.color, rect)
+        t = pygame.time.get_ticks() / 1000.0
+        alpha_factor = abs(math.sin(t * 1.2 + x * 0.5 + y * 0.4))
+        mc = int(60 + 80 * alpha_factor)
+        pygame.draw.ellipse(surface, (mc // 3, 0, mc),
+            pygame.Rect(rect.x + 3, rect.y + size // 3, size - 6, size // 3))
+        pygame.draw.rect(surface, (15, 5, 25), rect, 1)
+
+
 class PortalTile(Tile):
     def __init__(self, name, color, destination_map_name, spawn_x, spawn_y):
         super().__init__(name, "None", color, True, 0)

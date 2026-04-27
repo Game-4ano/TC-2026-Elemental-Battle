@@ -60,6 +60,14 @@ magma_titan = Character(
     sprite_key="magma_titan",
 )
 
+shadow_lord = Character(
+    name="Shadow Lord",
+    hp=140, damage=24, defense=7,
+    element="Dark", weakness="Electric",
+    is_boss=True,
+    sprite_key="void_emperor",
+)
+
 
 def reset_boss(boss: Character) -> Character:
     """Retorna o boss com HP resetado ao maximo."""
@@ -73,4 +81,5 @@ ROOM_BOSS = {
     "SALA_BATALHA_ELETRICA": thunder_beast,
     "SALA_BATALHA_VENTO":    storm_eagle,
     "SALA_BATALHA_FOGO":     magma_titan,
+    "SALA_BATALHA_SOMBRA":   shadow_lord,
 }

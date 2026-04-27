@@ -15,14 +15,16 @@ ROOM_BG = {
     "SALA_BATALHA_ELETRICA": (40,  38,   5),
     "SALA_BATALHA_VENTO":    (20,  50,  80),
     "SALA_BATALHA_FOGO":     (70,  10,   0),
+    "SALA_BATALHA_SOMBRA":   (20,   5,  35),
 }
 
 # Tint RGBA por região
 REGION_TINTS = {
-    "caverna_aguas":    (  0,  80, 200, 22),
-    "vulcao":           (200,  60,   0, 22),
-    "ceu_ventos":       (180, 220, 255, 18),
-    "terra_trovejante": (200, 190,   0, 18),
+    "caverna_aguas":    (  0,  80, 200, 34),
+    "vulcao":           (200,  60,   0, 34),
+    "ceu_ventos":       (180, 220, 255, 28),
+    "terra_trovejante": (200, 190,   0, 30),
+    "centro":           ( 30, 160,  30, 18),
 }
 
 # Lookup rápido (col, row) → nome da região — construído na importação
@@ -199,13 +201,20 @@ class CampoDeTreinoScene(GameScene):
                 bright = tuple(min(c + 90, 255) for c in tile.color)
                 pygame.draw.circle(screen, bright, (sx, sy), r, 2)
 
-                # 4 marcadores orbitando ao redor
                 orbit_r = int(TILE_SIZE // 2 + 12 + pulse * 4)
                 for i in range(4):
                     angle = t * 1.2 + i * math.pi / 2
                     ax = sx + int(math.cos(angle) * orbit_r)
                     ay = sy + int(math.sin(angle) * orbit_r)
                     pygame.draw.circle(screen, (255, 255, 200), (ax, ay), 2)
+
+                # Texto de dica quando adjacente
+                dist = abs(dx) + abs(dy)
+                if dist <= 1:
+                    hint_alpha = int(180 + 75 * abs(math.sin(t * 3)))
+                    hint = self.font.render("Pressione ← → ↑ ↓", True, bright)
+                    hint.set_alpha(hint_alpha)
+                    screen.blit(hint, (sx - hint.get_width() // 2, sy - TILE_SIZE - 8))
 
     def _draw_hero_shadow(self, screen: pygame.Surface, sx: int, sy: int):
         t     = pygame.time.get_ticks() / 1000.0

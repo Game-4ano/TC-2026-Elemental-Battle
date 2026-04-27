@@ -38,7 +38,7 @@ class Character:
             amount = amount // 2
             self.is_defending = False
         real_damage = max(amount - self.defense, 0)
-        self.hp -= real_damage
+        self.hp = max(self.hp - real_damage, 0)
         return real_damage
 
     def attack(self, target, damage_calculator):

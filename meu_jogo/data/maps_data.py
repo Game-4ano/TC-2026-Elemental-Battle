@@ -17,6 +17,10 @@ from meu_jogo.core.map import (
     # Arenas
     IceArenaTile, VolcanoFloorTile, SkyArenaTile, MetalArenaTile,
     DeepWaterTile, SkyVoidTile,
+    # Decorativos de sala
+    IceStalactiteTile, BubbleTile, LavaDropTile, CircuitFloorTile, NeonBorderTile,
+    # Sombra
+    VoidFloorTile, ShadowCrystalTile, DarkMistTile,
 )
 from meu_jogo.data.characters_data import (
     slime, goblin, wolf, forest_guardian,
@@ -108,6 +112,9 @@ GLOBAL_TILE_TYPES = {
     "E": PortalTile("Portal Elétrico", (200, 180,   0), "SALA_BATALHA_ELETRICA", 1, 1),
     "F": PortalTile("Portal Fogo",     (220,  60,   0), "SALA_BATALHA_FOGO",     1, 1),
     "O": PortalTile("Saída",           ( 50, 210, 100), "MUNDO_ABERTO",         20, 14),
+    "^": PortalTile("Portal Sombra",   (140,  50, 200), "SALA_BATALHA_SOMBRA",   1,  1),
+    # Decorações ambientais do mundo aberto
+    "q": ShadowCrystalTile(),   # cristal sombrio perto do portal sombra
     " ": GrassTile(),
 }
 
@@ -134,8 +141,8 @@ MUNDO_ABERTO_MATRIX = [
 # REGIÃO NORTE — Céu dos Ventos (lin 0-7)
   [X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X], # 0
   [X,  U,  U,  U,  U,  Z,  Z,  Z,  Z,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U, "W", U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  X,  X,  X,  X,  X,  X,  X,  X,  X], # 1 ← Portal Vento
-  [X,  U,  J,  J,  U,  Z,  N,  N,  Z,  U,  J,  J,  J,  U,  U,  U,  J,  J,  U,  U,  U,  U,  J,  J,  U,  U,  J,  U,  U,  U,  U,  X,  X,  X,  X,  X,  X,  X,  X,  X], # 2
-  [X,  U,  J,  Z,  Z,  Z,  N,  N,  Z,  Z,  J,  J,  Z,  Z,  U,  U,  J,  J,  Z,  Z,  Z,  Z,  J,  J,  Z,  Z,  J,  Z,  U,  U,  U,  X,  X,  X,  X,  X,  X,  X,  X,  X], # 3
+  [X,  U,  J,  J,  U,  Z,  N, "N",  Z,  U,  J,  N,  J,  U,  U,  U,  J,  N,  U,  U,  U,  U,  J,  N,  U,  U,  J,  U,  U,  U,  U,  X,  X,  X,  X,  X,  X,  X,  X,  X], # 2
+  [X,  U, "q",  Z,  Z, "^",  N,  N,  Z,  Z,  J,  J,  Z,  Z,  U,  U,  J,  J,  Z,  Z,  Z,  Z,  J,  J,  Z,  Z,  J,  Z,  U,  U,  U,  X,  X,  X,  X,  X,  X,  X,  X,  X], # 3
   [X,  U,  J,  Z,  U,  Z,  U,  U,  Z,  U,  J,  J,  U,  Z,  U,  U,  J,  J,  U,  Z,  U,  Z,  J,  J,  U,  Z,  J,  Z,  U,  U,  U,  X,  X,  X,  X,  X,  X,  X,  X,  X], # 4
   [X,  U,  U,  Z,  U,  U,  U,  U,  Z,  U,  U,  U,  U,  Z,  U,  U,  U,  U,  U,  Z,  U,  Z,  U,  U,  U,  Z,  U,  Z,  U,  U,  U,  X,  X,  X,  X,  X,  X,  X,  X,  X], # 5
   [X,  U,  U,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  U,  U,  X,  X,  X,  X,  X,  X,  X,  X,  X], # 6 ← corredor norte
@@ -198,66 +205,81 @@ def _build_themed_room(floor_tile, border_tile, deco_pattern, exit_row, exit_col
     return room
 
 
-# --- SALA ÁGUA (Hydra) ---
+# --- SALA ÁGUA (Hydra) — Caverna Submersa ---
 _AGUA_DECO = [
-    # Água profunda decorativa nas bordas internas
+    # Água profunda nas bordas internas
     (1, 1,"w"), (1,10,"w"), (8, 1,"w"), (8,10,"w"),
     (1, 2,"w"), (1, 9,"w"), (8, 2,"w"), (8, 9,"w"),
     (2, 1,"w"), (2,10,"w"), (7, 1,"w"), (7,10,"w"),
-    # Cristais azuis nos cantos
+    # Cristais azuis nos cantos internos
     (2, 2,"Y"), (2, 9,"Y"), (7, 2,"Y"), (7, 9,"Y"),
-    # Pequena poça central
+    # Estalactites no topo (não-caminhável, decorativo)
+    (1, 3,"st"), (1, 5,"st"), (1, 7,"st"), (1, 9,"st"),
+    # Bolhas animadas nas bordas laterais
+    (2, 1,"bb"), (4, 1,"bb"), (6, 1,"bb"), (8, 1,"bb"),
+    (2,10,"bb"), (4,10,"bb"), (6,10,"bb"), (8,10,"bb"),
+    # Poça central
     (4, 5,"P"), (4, 6,"P"), (5, 5,"P"), (5, 6,"P"),
 ]
 
 WATER_ROOM_TILES_BATTLE = {
-    "X": WallTile(),
-    "A": IceArenaTile(),
-    "w": DeepWaterTile(),
-    "Y": CrystalTile(),
-    "P": WaterTile(name="Poça Brilhante", color=(60, 140, 220), damage=0),
-    "O": PortalTile("Saída", (50, 210, 100), "MUNDO_ABERTO", 2, 14),  # col2, row14 — ao lado do portal Água
+    "X":  WallTile(),
+    "A":  IceArenaTile(),
+    "w":  DeepWaterTile(),
+    "Y":  CrystalTile(),
+    "P":  WaterTile(name="Poça Brilhante", color=(60, 140, 220), damage=0),
+    "st": IceStalactiteTile(),
+    "bb": BubbleTile(),
+    "O":  PortalTile("Saída", (50, 210, 100), "MUNDO_ABERTO", 2, 14),
 }
 _agua_raw = _build_themed_room("A", "X", _AGUA_DECO, 1, 6)
 SALA_BATALHA_AGUA_MATRIX = _agua_raw
 
 
-# --- SALA FOGO (Magma Titan) ---
+# --- SALA FOGO (Magma Titan) — Cratera Vulcânica ---
 _FOGO_DECO = [
-    # Lava nas bordas internas
+    # Lava transbordando nas bordas
     (1, 1,"L"), (1,10,"L"), (8, 1,"L"), (8,10,"L"),
     (1, 2,"L"), (1, 9,"L"), (8, 2,"L"), (8, 9,"L"),
     (2, 1,"L"), (2,10,"L"), (7, 1,"L"), (7,10,"L"),
-    # Rochas de obsidiana no centro
+    # Rochas vulcânicas centrais
     (4, 5,"H"), (4, 6,"H"), (5, 5,"H"), (5, 6,"H"),
+    # Pingos de lava nas bordas superiores (animados)
+    (1, 4,"ld"), (1, 6,"ld"), (1, 8,"ld"),
+    (8, 4,"ld"), (8, 6,"ld"), (8, 8,"ld"),
     # Brasas espalhadas
     (3, 3,"K"), (3, 8,"K"), (6, 3,"K"), (6, 8,"K"),
-    (2, 5,"K"), (7, 6,"K"),
+    (2, 5,"K"), (7, 6,"K"), (4, 2,"K"), (5, 7,"K"),
 ]
 
 FIRE_ROOM_TILES_BATTLE = {
-    "X": WallTile(),
-    "V": VolcanoFloorTile(),
-    "L": LavaTile(),
-    "H": HotRockTile(),
-    "K": EmberTile(),
-    "O": PortalTile("Saída", (50, 210, 100), "MUNDO_ABERTO", 35, 14),  # col35, row14 — ao lado do portal Fogo
+    "X":  WallTile(),
+    "V":  VolcanoFloorTile(),
+    "L":  LavaTile(),
+    "H":  HotRockTile(),
+    "K":  EmberTile(),
+    "ld": LavaDropTile(),
+    "O":  PortalTile("Saída", (50, 210, 100), "MUNDO_ABERTO", 35, 14),
 }
 _fogo_raw = _build_themed_room("V", "X", _FOGO_DECO, 8, 6)
 SALA_BATALHA_FOGO_MATRIX = _fogo_raw
 
 
-# --- SALA VENTO (Storm Eagle) ---
+# --- SALA VENTO (Storm Eagle) — Arena nas Nuvens ---
 _VENTO_DECO = [
-    # Vazio celeste nas bordas internas
+    # Vazio celeste extenso nas bordas
     (1, 1,"K"), (1,10,"K"), (8, 1,"K"), (8,10,"K"),
     (1, 2,"K"), (1, 9,"K"), (8, 2,"K"), (8, 9,"K"),
     (2, 1,"K"), (2,10,"K"), (7, 1,"K"), (7,10,"K"),
-    # Plataformas flutuantes decorativas
+    (1, 3,"K"), (1, 8,"K"), (8, 3,"K"), (8, 8,"K"),
+    (2, 2,"K"), (2, 9,"K"), (7, 2,"K"), (7, 9,"K"),
+    # Plataformas celestes flutuantes
     (3, 2,"Z"), (3, 9,"Z"), (6, 2,"Z"), (6, 9,"Z"),
-    # Penas
+    (4, 1,"Z"), (5, 1,"Z"),
+    # Penas caindo em grande quantidade
     (2, 4,"N"), (2, 7,"N"), (7, 4,"N"), (7, 7,"N"),
-    (4, 2,"N"), (5, 9,"N"),
+    (4, 2,"N"), (5, 9,"N"), (3, 5,"N"), (6, 6,"N"),
+    (4, 8,"N"), (5, 3,"N"),
 ]
 
 WIND_ROOM_TILES_BATTLE = {
@@ -272,30 +294,57 @@ _vento_raw = _build_themed_room("S", "X", _VENTO_DECO, 1, 6)
 SALA_BATALHA_VENTO_MATRIX = _vento_raw
 
 
-# --- SALA ELÉTRICA (Thunder Beast) ---
+# --- SALA ELÉTRICA (Thunder Beast) — Arena Eletro-Industrial ---
 _ELEC_DECO = [
-    # Cristais elétricos nas bordas internas
-    (1, 1,"o"), (1,10,"o"), (8, 1,"o"), (8,10,"o"),
-    (2, 1,"o"), (2,10,"o"), (7, 1,"o"), (7,10,"o"),
-    # Areia carregada ao redor da arena
-    (1, 3,"e"), (1, 5,"e"), (1, 7,"e"), (1, 9,"e"),
-    (8, 3,"e"), (8, 5,"e"), (8, 7,"e"), (8, 9,"e"),
+    # Tubos de neon nas bordas (não-caminháveis)
+    (1, 1,"nb"), (1,10,"nb"), (8, 1,"nb"), (8,10,"nb"),
+    (2, 1,"nb"), (2,10,"nb"), (7, 1,"nb"), (7,10,"nb"),
+    # Chão de circuito espalhado
+    (2, 2,"cf"), (2, 4,"cf"), (2, 6,"cf"), (2, 8,"cf"),
+    (7, 3,"cf"), (7, 5,"cf"), (7, 7,"cf"), (7, 9,"cf"),
+    (4, 3,"cf"), (5, 8,"cf"),
+    # Cristais raio nos cantos internos
+    (3, 3,"o"), (3, 8,"o"), (6, 3,"o"), (6, 8,"o"),
+    # Areia carregada
+    (1, 3,"e"), (1, 7,"e"), (8, 3,"e"), (8, 7,"e"),
     # Placas de metal central
     (4, 5,"v"), (4, 6,"v"), (5, 5,"v"), (5, 6,"v"),
-    # Cristais decorativos internos
-    (3, 3,"o"), (3, 8,"o"), (6, 3,"o"), (6, 8,"o"),
 ]
 
 ELEC_ROOM_TILES_BATTLE = {
-    "X": WallTile(),
-    "M": MetalArenaTile(),
-    "o": LightningCrystalTile(),
-    "e": ChargedSandTile(),
-    "v": MetalTile(),
-    "O": PortalTile("Saída", (50, 210, 100), "MUNDO_ABERTO", 20, 25),  # col20, row25 — acima do portal Elétrico
+    "X":  WallTile(),
+    "M":  MetalArenaTile(),
+    "o":  LightningCrystalTile(),
+    "e":  ChargedSandTile(),
+    "v":  MetalTile(),
+    "cf": CircuitFloorTile(),
+    "nb": NeonBorderTile(),
+    "O":  PortalTile("Saída", (50, 210, 100), "MUNDO_ABERTO", 20, 25),
 }
 _elec_raw = _build_themed_room("M", "X", _ELEC_DECO, 8, 6)
 SALA_BATALHA_ELETRICA_MATRIX = _elec_raw
+
+
+# --- SALA SOMBRA (Shadow Lord) ---
+_SOMBRA_DECO = [
+    # Cristais de sombra nos cantos internos
+    (2, 2,"c"), (2, 9,"c"), (7, 2,"c"), (7, 9,"c"),
+    # Cristais centrais
+    (4, 4,"c"), (5, 7,"c"),
+    # Névoa espalhada
+    (1, 4,"m"), (1, 7,"m"), (8, 4,"m"), (8, 7,"m"),
+    (3, 5,"m"), (6, 6,"m"), (4, 8,"m"), (5, 3,"m"),
+]
+
+SHADOW_ROOM_TILES_BATTLE = {
+    "X": WallTile(),
+    "v": VoidFloorTile(),
+    "c": ShadowCrystalTile(),
+    "m": DarkMistTile(),
+    "O": PortalTile("Saída", (50, 210, 100), "MUNDO_ABERTO", 5, 4),
+}
+_sombra_raw = _build_themed_room("v", "X", _SOMBRA_DECO, 8, 6)
+SALA_BATALHA_SOMBRA_MATRIX = _sombra_raw
 
 
 # -----------------------------------------------------------------------
@@ -311,6 +360,7 @@ WATER_ROOM_TILES  = _make_room_tiles(WATER_ROOM_TILES_BATTLE)
 FIRE_ROOM_TILES   = _make_room_tiles(FIRE_ROOM_TILES_BATTLE)
 WIND_ROOM_TILES   = _make_room_tiles(WIND_ROOM_TILES_BATTLE)
 ELEC_ROOM_TILES   = _make_room_tiles(ELEC_ROOM_TILES_BATTLE)
+SHADOW_ROOM_TILES = _make_room_tiles(SHADOW_ROOM_TILES_BATTLE)
 
 
 # -----------------------------------------------------------------------
@@ -336,6 +386,10 @@ ALL_MAP_DATA = {
     "SALA_BATALHA_FOGO": {
         "matrix":     SALA_BATALHA_FOGO_MATRIX,
         "tile_types": FIRE_ROOM_TILES,
+    },
+    "SALA_BATALHA_SOMBRA": {
+        "matrix":     SALA_BATALHA_SOMBRA_MATRIX,
+        "tile_types": SHADOW_ROOM_TILES,
     },
 }
 

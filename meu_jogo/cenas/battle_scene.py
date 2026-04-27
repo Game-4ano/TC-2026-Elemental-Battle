@@ -109,6 +109,7 @@ class CharacterObject(GameObject):
         self._shake_timer   = 0.0
         self._shake_off     = pygame.Vector2(0, 0)
         self._flash_timer   = 0.0
+        self._flash_color   = (255, 255, 255)
 
         # HP animado: interpola suavemente em direcao ao HP real
         self._hp_display: float = float(character.hp)
@@ -159,10 +160,11 @@ class CharacterObject(GameObject):
         self._state_timer    = 0.0
         self._state_duration = 0.35
 
-    def take_hit(self):
+    def take_hit(self, flash_color=(255, 255, 255)):
         """Flash + shake + animacao de hurt."""
         self._shake_timer = 0.3
         self._flash_timer = 0.2
+        self._flash_color = flash_color
         self._ctrl.play("hurt", force_restart=True)
         self._state          = self.HURT
         self._state_timer    = 0.0
@@ -234,7 +236,7 @@ class CharacterObject(GameObject):
                 surf.set_alpha(max(0, int(255 * (1.0 - progress))))
             elif self._flash_timer > 0:
                 surf = surf.copy()
-                surf.fill((255, 255, 255, 160), special_flags=pygame.BLEND_RGBA_MULT)
+                surf.fill((*self._flash_color, 160), special_flags=pygame.BLEND_RGBA_MULT)
             screen.blit(surf, (cx, cy))
 
             if not dying:
@@ -260,31 +262,50 @@ class CharacterObject(GameObject):
                 screen.blit(tag, (cx, cy - 18))
 
     def draw_hud(self, screen, hud_x, hud_y):
-        font  = pygame.font.SysFont(None, 22)
-        bfont = pygame.font.SysFont(None, 26)
-
-        panel = pygame.Rect(hud_x - 6, hud_y - 4, 160, 58)
-        pygame.draw.rect(screen, (0, 0, 0), panel, border_radius=6)
+        font   = pygame.font.SysFont(None, 22)
+        bfont  = pygame.font.SysFont(None, 23)
+        sfont  = pygame.font.SysFont(None, 17)
         elem_c = ELEMENT_COLORS.get(self.character.element, WHITE)
+
+        panel = pygame.Rect(hud_x, hud_y, 180, 64)
+        bg    = pygame.Surface((panel.w, panel.h), pygame.SRCALPHA)
+        bg.fill((8, 6, 18, 215))
+        screen.blit(bg, panel.topleft)
         pygame.draw.rect(screen, elem_c, panel, 2, border_radius=6)
+        pygame.draw.rect(screen, tuple(max(0, c - 80) for c in elem_c),
+                         panel.inflate(-5, -5), 1, border_radius=4)
+
+        pygame.draw.circle(screen, elem_c, (hud_x + 13, hud_y + 13), 8)
+        pygame.draw.circle(screen, WHITE,  (hud_x + 13, hud_y + 13), 8, 1)
 
         name_s = bfont.render(
             f"{self.character.name}  Lv.{self.character.level}", True, WHITE)
-        screen.blit(name_s, (hud_x, hud_y))
+        screen.blit(name_s, (hud_x + 26, hud_y + 5))
 
-        bar_w, bar_h = 148, 11
-        ratio    = max(self._hp_display, 0) / self.character.max_hp
-        hp_color = (60, 200, 60) if ratio > 0.5 else (220, 180, 0) if ratio > 0.25 else (220, 40, 40)
-        pygame.draw.rect(screen, (60, 60, 60),
-            (hud_x, hud_y + 22, bar_w, bar_h), border_radius=4)
-        pygame.draw.rect(screen, hp_color,
-            (hud_x, hud_y + 22, int(bar_w * ratio), bar_h), border_radius=4)
-        pygame.draw.rect(screen, WHITE,
-            (hud_x, hud_y + 22, bar_w, bar_h), 1, border_radius=4)
+        if self.character.is_boss:
+            tbg = pygame.Surface((40, 14), pygame.SRCALPHA)
+            tbg.fill((140, 90, 0, 220))
+            screen.blit(tbg, (panel.right - 46, hud_y + 3))
+            screen.blit(sfont.render("BOSS", True, (255, 215, 0)),
+                        (panel.right - 44, hud_y + 4))
 
-        hp_s = font.render(
-            f"{self.character.hp}/{self.character.max_hp} HP", True, WHITE)
-        screen.blit(hp_s, (hud_x, hud_y + 37))
+        bar_w, bar_h = 160, 12
+        bx, by = hud_x + 10, hud_y + 28
+        ratio  = max(self._hp_display, 0) / max(self.character.max_hp, 1)
+        filled = int(bar_w * ratio)
+        pygame.draw.rect(screen, (40, 12, 12), (bx, by, bar_w, bar_h), border_radius=5)
+        if filled > 0:
+            hp_c = ((60, 200, 60) if ratio > 0.5 else
+                    (220, 180, 0) if ratio > 0.25 else (220, 40, 40))
+            pygame.draw.rect(screen, hp_c, (bx, by, filled, bar_h), border_radius=5)
+        pygame.draw.rect(screen, (130, 130, 130), (bx, by, bar_w, bar_h), 1, border_radius=5)
+        screen.blit(font.render(
+            f"{max(0, int(self._hp_display))}/{self.character.max_hp}", True, WHITE),
+            (bx + 2, by - 1))
+
+        screen.blit(sfont.render(
+            ELEMENT_NAMES_PT.get(self.character.element, self.character.element),
+            True, elem_c), (hud_x + 26, hud_y + 46))
 
 
 # ---------------------------------------------------------------------------
@@ -315,6 +336,15 @@ class BattleScene(GameScene):
         self._screen_shake   = 0.0   # timer
         self._shake_amount   = 0.0
         self._super_flash    = 0     # alpha 0-255
+
+        # Digitação de mensagem (estilo Pokémon)
+        self._prev_message   = ""
+        self._type_index     = 0
+        self._type_timer     = 0.0
+        # Indicador de turno
+        self._turn_alpha     = 0.0
+        # Partículas de morte
+        self._death_particles: list[dict] = []
 
         # Menu de batalha
         self._menu_index = 0
@@ -357,11 +387,14 @@ class BattleScene(GameScene):
         attacker_obj.play_attack()
 
         def on_hit():
-            result = action.execute(attacker_obj.character, defender_obj.character)
-            dano   = result["damage"]
-            defender_obj.take_hit()
+            result    = action.execute(attacker_obj.character, defender_obj.character)
+            dano      = result["damage"]
+            flash_col = ELEMENT_COLORS.get(atk_elem, WHITE)
+            defender_obj.take_hit(flash_color=flash_col)
             self._spawn_impact(defender_obj.position, atk_elem)
             self.manager.audio.play_sfx("hit")
+            self._screen_shake = 0.18
+            self._shake_amount = min(dano / 12.0, 4.0)
 
             # Texto flutuante de dano
             is_special  = result.get("type") == "special"
@@ -387,8 +420,8 @@ class BattleScene(GameScene):
                     self.manager.score.registrar_elemental()
                     self.manager.audio.play_sfx("super_effective")
                     self._super_flash  = 200
-                    self._screen_shake = 0.25
-                    self._shake_amount = 6.0
+                    self._screen_shake = 0.30
+                    self._shake_amount = min(dano / 10.0, 8.0)
                     self.manager.notificacoes.adicionar(
                         "Super efetivo! x1.5  +50 pts",
                         cor=(255, 230, 50), duracao=1.5)
@@ -459,10 +492,14 @@ class BattleScene(GameScene):
 
         # Navegacao no menu (so quando e turno do jogador)
         if not self.finished and not self.battle.is_over() and not self._enemy_turn_pending:
-            if event.key in (pygame.K_UP, pygame.K_w):
-                self._menu_index = (self._menu_index - 1) % 4
-            elif event.key in (pygame.K_DOWN, pygame.K_s):
-                self._menu_index = (self._menu_index + 1) % 4
+            if event.key in (pygame.K_LEFT,  pygame.K_a):
+                self._menu_index ^= 1   # toggle coluna
+            elif event.key in (pygame.K_RIGHT, pygame.K_d):
+                self._menu_index ^= 1
+            elif event.key in (pygame.K_UP,   pygame.K_w):
+                self._menu_index ^= 2   # toggle linha
+            elif event.key in (pygame.K_DOWN,  pygame.K_s):
+                self._menu_index ^= 2
             elif event.key == pygame.K_RETURN:
                 self._confirmar_acao()
 
@@ -557,6 +594,13 @@ class BattleScene(GameScene):
 
     # -----------------------------------------------------------------------
     def update(self, dt: float):
+        if self.message != self._prev_message:
+            self._prev_message = self.message
+            self._type_index   = 0
+            self._type_timer   = 0.0
+        self._type_timer += dt
+        self._type_index  = min(int(self._type_timer * 30), len(self.message))
+
         for obj in list(self.objects):
             obj.update(dt)
         self.objects = [o for o in self.objects if o.alive]
@@ -582,6 +626,12 @@ class BattleScene(GameScene):
             p["vel"].x *= 0.97
             p["life"]  -= dt
         self._ambient = [p for p in self._ambient if p["life"] > 0]
+
+        # Partículas de morte
+        for p in self._death_particles:
+            p["pos"] += p["vel"] * dt
+            p["life"] -= dt
+        self._death_particles = [p for p in self._death_particles if p["life"] > 0]
 
         # VFX temporais
         if self._screen_shake > 0:
@@ -620,16 +670,7 @@ class BattleScene(GameScene):
             self._render(screen)
 
     def _render(self, surface: pygame.Surface):
-        # Fundo
-        if self.bg_image:
-            scaled = pygame.transform.scale(
-                self.bg_image, (SCREEN_WIDTH, SCREEN_HEIGHT))
-            surface.blit(scaled, (0, 0))
-            overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-            overlay.fill((*self.bg_color, 175))
-            surface.blit(overlay, (0, 0))
-        else:
-            surface.fill(self.bg_color)
+        self._draw_themed_background(surface)
 
         self._draw_arena(surface)
         self._draw_ambient(surface)
@@ -637,9 +678,16 @@ class BattleScene(GameScene):
         for obj in self.objects:
             obj.draw(surface)
 
-        # Particulas de impacto
+        # Partículas de impacto
         for p in self._particles:
             alpha = int(255 * max(p["life"], 0) / 0.7)
+            s = pygame.Surface((p["r"] * 2, p["r"] * 2), pygame.SRCALPHA)
+            pygame.draw.circle(s, (*p["color"], alpha), (p["r"], p["r"]), p["r"])
+            surface.blit(s, (int(p["pos"].x) - p["r"], int(p["pos"].y) - p["r"]))
+
+        # Partículas de morte
+        for p in self._death_particles:
+            alpha = int(255 * max(p["life"], 0) / 1.5)
             s = pygame.Surface((p["r"] * 2, p["r"] * 2), pygame.SRCALPHA)
             pygame.draw.circle(s, (*p["color"], alpha), (p["r"], p["r"]), p["r"])
             surface.blit(s, (int(p["pos"].x) - p["r"], int(p["pos"].y) - p["r"]))
@@ -660,9 +708,10 @@ class BattleScene(GameScene):
                               int(t["pos"].y)))
 
         # HUDs
-        self.player_obj.draw_hud(surface, 16, 16)
-        self.enemy_obj.draw_hud(surface, SCREEN_WIDTH - 174, 16)
+        self.player_obj.draw_hud(surface, 8, 8)
+        self.enemy_obj.draw_hud(surface, SCREEN_WIDTH - 192, 8)
         self._draw_score_hud(surface)
+        self._draw_turn_indicator(surface)
         self._draw_message_box(surface)
 
     def render(self, screen: pygame.Surface):
@@ -671,14 +720,27 @@ class BattleScene(GameScene):
     # -----------------------------------------------------------------------
     def _draw_arena(self, screen):
         SIZE = CharacterObject.SIZE
-        for cx in (self.PLAYER_X, self.ENEMY_X):
-            plat = pygame.Rect(int(cx) - 4, int(self.CHARS_Y) + SIZE + 2,
-                               SIZE + 8, 10)
-            pygame.draw.rect(screen, (60, 55, 80),  plat, border_radius=6)
-            pygame.draw.rect(screen, (120, 110, 160), plat, 2, border_radius=6)
+        t    = pygame.time.get_ticks() / 1000.0
+
+        for char_obj in (self.player_obj, self.enemy_obj):
+            cx   = int(char_obj.position.x)
+            ec   = ELEMENT_COLORS.get(char_obj.character.element, (120, 110, 160))
+
+            # Sombra elíptica
+            sh = pygame.Surface((SIZE + 16, 16), pygame.SRCALPHA)
+            pygame.draw.ellipse(sh, (0, 0, 0, 70), sh.get_rect())
+            screen.blit(sh, (cx - 8, int(self.CHARS_Y) + SIZE + 8))
+
+            # Plataforma elíptica
+            plat_r = pygame.Rect(cx - 4, int(self.CHARS_Y) + SIZE + 4, SIZE + 8, 12)
+            pygame.draw.ellipse(screen, (45, 40, 65), plat_r)
+            pulse = abs(math.sin(t * 1.8))
+            glow_c = tuple(min(c + int(50 * pulse), 255) for c in ec)
+            pygame.draw.ellipse(screen, glow_c, plat_r, 2)
+
         mid = SCREEN_WIDTH // 2
-        div = pygame.Surface((2, 300), pygame.SRCALPHA)
-        div.fill((255, 255, 255, 40))
+        div = pygame.Surface((2, SCREEN_HEIGHT - 120), pygame.SRCALPHA)
+        div.fill((255, 255, 255, 25))
         screen.blit(div, (mid, 80))
 
     def _draw_score_hud(self, screen):
@@ -698,67 +760,212 @@ class BattleScene(GameScene):
             combo_txt = f.render(f"Combo x{combo}!", True, (255, 180, 40))
             screen.blit(combo_txt, (cx - combo_txt.get_width() // 2, 100))
 
+    def _draw_themed_background(self, surface: pygame.Surface):
+        elem = self.battle.enemy.element
+        t    = pygame.time.get_ticks() / 1000.0
+        w, h = SCREEN_WIDTH, SCREEN_HEIGHT
+
+        _BASE = {
+            "Water":    ((5,  15, 60),  (15, 50, 130)),
+            "Fire":     ((55,  8,  0),  (100, 28,   5)),
+            "Air":      ((22, 18, 55),  (45,  75, 130)),
+            "Electric": ((8,   8, 45),  (50,  45,   8)),
+            "Dark":     ((3,   2, 14),  (18,   4,  36)),
+            "Grass":    ((4,  22,  4),  (15,  65,  15)),
+        }
+        c1, c2 = _BASE.get(elem, ((15, 15, 30), (30, 30, 60)))
+        surface.fill(c1)
+
+        for i in range(5):
+            ratio = (i + 1) / 5
+            mc    = tuple(int(c1[j] + (c2[j] - c1[j]) * ratio) for j in range(3))
+            bnd   = pygame.Surface((w, h // 5), pygame.SRCALPHA)
+            bnd.fill((*mc, 50 + i * 10))
+            surface.blit(bnd, (0, h - (h // 5) * (i + 1)))
+
+        if elem == "Water":
+            for i in range(3):
+                pts = [(x, int(h * 0.55 + 10 * math.sin(t * 1.2 + x * 0.018 + i * 2) + i * 28))
+                       for x in range(0, w + 12, 10)]
+                if len(pts) >= 2:
+                    pygame.draw.lines(surface, (30 + i * 10, 110 + i * 20, 200), False, pts, 1)
+
+        elif elem == "Fire":
+            for i in range(6):
+                bx2 = int((i * w / 6 + t * 30) % w)
+                by2 = int(h * 0.85 - abs(math.sin(t * 1.5 + i)) * h * 0.22)
+                cv  = int(160 + 95 * abs(math.sin(t * 2 + i)))
+                s   = pygame.Surface((4, 4), pygame.SRCALPHA)
+                pygame.draw.circle(s, (cv, cv // 3, 0, 150), (2, 2), 2)
+                surface.blit(s, (bx2, by2))
+
+        elif elem == "Electric":
+            for gx in range(0, w, 50):
+                a = int(18 + 12 * abs(math.sin(t * 3 + gx * 0.04)))
+                ls = pygame.Surface((1, h), pygame.SRCALPHA)
+                ls.fill((0, 200, 0, a))
+                surface.blit(ls, (gx, 0))
+            for gy in range(0, h, 50):
+                a = int(18 + 12 * abs(math.sin(t * 3 + gy * 0.04)))
+                ls = pygame.Surface((w, 1), pygame.SRCALPHA)
+                ls.fill((0, 200, 0, a))
+                surface.blit(ls, (0, gy))
+
+        elif elem == "Dark":
+            for i in range(6):
+                px2 = int(w * (i / 6) + 20 * math.sin(t * 0.7 + i))
+                py2 = int(h * 0.4 + 30 * math.cos(t * 0.5 + i * 1.3))
+                a   = int(50 + 60 * abs(math.sin(t * 1.2 + i)))
+                s   = pygame.Surface((8, 8), pygame.SRCALPHA)
+                pygame.draw.circle(s, (160, 0, 220, a), (4, 4), 4)
+                surface.blit(s, (px2, py2))
+
+        elif elem == "Air":
+            for i in range(3):
+                cx2 = int((t * 35 + i * 220) % (w + 120)) - 60
+                cy2 = 60 + i * 55
+                cs  = pygame.Surface((140, 44), pygame.SRCALPHA)
+                pygame.draw.ellipse(cs, (200, 215, 240, 18), (0, 10, 140, 24))
+                pygame.draw.ellipse(cs, (210, 225, 250, 14), (20, 0, 100, 30))
+                surface.blit(cs, (cx2, cy2))
+
+        elif elem == "Grass":
+            for i in range(4):
+                lx = int((t * 22 + i * 160) % (w + 40))
+                ly = int(h * 0.3 + i * 35 + 15 * math.sin(t * 0.8 + i))
+                ls = pygame.Surface((6, 18), pygame.SRCALPHA)
+                pygame.draw.polygon(ls, (30, 110, 30, 160), [(3, 0), (6, 18), (0, 18)])
+                surface.blit(ls, (lx, ly))
+
+    def _draw_turn_indicator(self, surface: pygame.Surface):
+        if self.finished or self.battle.is_over():
+            return
+        t     = pygame.time.get_ticks() / 1000.0
+        alpha = int(160 + 95 * abs(math.sin(t * 2.2)))
+        if self._enemy_turn_pending:
+            label, col = "TURNO INIMIGO", (220, 80,  80)
+        else:
+            label, col = "SEU TURNO",     (80,  210, 80)
+        f   = pygame.font.SysFont(None, 22)
+        txt = f.render(label, True, col)
+        txt.set_alpha(alpha)
+        surface.blit(txt, (SCREEN_WIDTH // 2 - txt.get_width() // 2, 6))
+
+    def _spawn_death_particles(self, pos: pygame.Vector2, element: str):
+        color = ELEMENT_COLORS.get(element, WHITE)
+        for i in range(4):
+            angle = i * math.tau / 4 - math.pi / 2
+            speed = random.uniform(40, 110)
+            self._death_particles.append({
+                "pos":   pygame.Vector2(pos),
+                "vel":   pygame.Vector2(math.cos(angle) * speed,
+                                        math.sin(angle) * speed - 35),
+                "life":  random.uniform(1.0, 1.8),
+                "color": color,
+                "r":     random.randint(4, 9),
+            })
+
     def _draw_message_box(self, screen):
         if self.finished and self._last_summary:
             self._draw_summary_panel(screen)
             return
 
-        box  = pygame.Rect(20, SCREEN_HEIGHT - 110, SCREEN_WIDTH - 40, 88)
+        box  = pygame.Rect(10, SCREEN_HEIGHT - 106, SCREEN_WIDTH - 20, 96)
         bg_s = pygame.Surface((box.w, box.h), pygame.SRCALPHA)
-        bg_s.fill((0, 0, 0, 180))
+        bg_s.fill((0, 0, 0, 190))
         screen.blit(bg_s, (box.x, box.y))
-        pygame.draw.rect(screen, (180, 180, 220), box, 2, border_radius=8)
+        pygame.draw.rect(screen, (220, 220, 255), box, 2, border_radius=8)
+        pygame.draw.rect(screen, (100, 100, 150),
+                         box.inflate(-6, -6), 1, border_radius=6)
 
         font_big = pygame.font.SysFont(None, 26)
-        msg = font_big.render(self.message, True, WHITE)
-        screen.blit(msg, (box.x + 14, box.y + 10))
+        typed    = self.message[:self._type_index]
+        screen.blit(font_big.render(typed, True, WHITE), (box.x + 14, box.y + 10))
+
+        # Triângulo ▼ piscante quando texto completo
+        if self._type_index >= len(self.message) and self.message:
+            tv = pygame.time.get_ticks() / 1000.0
+            if math.sin(tv * 6) > 0:
+                tri = pygame.font.SysFont(None, 22).render("▼", True, (200, 200, 255))
+                screen.blit(tri, (box.right - 22, box.bottom - 22))
 
         if not self.finished and not self._enemy_turn_pending and not self.battle.is_over():
             self._draw_battle_menu(screen, box)
         elif self.finished:
-            fsm = pygame.font.SysFont(None, 22)
-            tip = fsm.render("ENTER = voltar ao mapa", True, (160, 200, 160))
-            screen.blit(tip, (box.x + 14, box.y + 62))
+            tip = pygame.font.SysFont(None, 22).render(
+                "ENTER = voltar ao mapa", True, (160, 200, 160))
+            screen.blit(tip, (box.x + 14, box.y + 70))
 
     def _draw_battle_menu(self, screen, box: pygame.Rect):
-        """Renderiza o menu de 4 opcoes horizontalmente na caixa de mensagem."""
-        f = pygame.font.SysFont(None, 21)
-        # (usos restantes, usos maximos) — None = sem limite
+        """Grade 2×2 no lado direito da caixa de mensagem."""
+        f    = pygame.font.SysFont(None, 20)
+        sf   = pygame.font.SysFont(None, 16)
+        t    = pygame.time.get_ticks() / 1000.0
+        ec   = ELEMENT_COLORS.get(self.battle.player.element, (180, 180, 255))
+
         usos_info = [
             None,
             (self._special_action.uses_left, SpecialAttackAction.MAX_USES),
             (self._defend_action.uses_left,  DefendAction.MAX_USES),
             (self._heal_action.uses_left,    HealAction.MAX_USES),
         ]
-        item_w = (box.w - 16) // 4
-        y_row  = box.y + 42
+        _ICONS = ["Atq", "Esp", "Def", "Cur"]
+
+        btn_w, btn_h = 148, 32
+        col_x = [box.x + box.w - 312, box.x + box.w - 156]
+        row_y = [box.y + 30, box.y + 64]
+
+        # Dica elemental acima da grade
+        if self._menu_index in (0, 1):
+            atk = self.battle.player.element
+            dfn = self.battle.enemy.element
+            if element_advantage.get(atk) == dfn:
+                ht, hc = "Super Efetivo!", (60, 220, 60)
+            elif element_advantage.get(dfn) == atk:
+                ht, hc = "Pouco Efetivo...", (160, 160, 160)
+            else:
+                ht, hc = "", WHITE
+            if ht:
+                screen.blit(sf.render(ht, True, hc), (col_x[0], box.y + 14))
 
         for i, label in enumerate(_MENU_LABELS):
-            x_item = box.x + 8 + i * item_w
-            selecionado = (i == self._menu_index)
+            col_i, row_i = i % 2, i // 2
+            bx2 = col_x[col_i]
+            by2 = row_y[row_i]
+            sel = (i == self._menu_index)
 
-            # Fundo do item selecionado
-            item_rect = pygame.Rect(x_item, y_row - 2, item_w - 4, 34)
-            if selecionado:
-                pygame.draw.rect(screen, (60, 60, 120), item_rect, border_radius=4)
-                pygame.draw.rect(screen, (180, 180, 255), item_rect, 2, border_radius=4)
-            else:
-                pygame.draw.rect(screen, (30, 30, 60), item_rect, border_radius=4)
-
-            # Disponibilidade
             info    = usos_info[i]
             sem_uso = info is not None and info[0] == 0
-            cor_txt = (120, 120, 120) if sem_uso else (
-                      (255, 255, 120) if selecionado else (200, 200, 200))
 
-            txt_label = f.render(label, True, cor_txt)
-            screen.blit(txt_label,
-                (x_item + (item_w - 4 - txt_label.get_width()) // 2, y_row + 2))
+            scale = 1.0 + 0.04 * abs(math.sin(t * 4)) if sel else 1.0
+            sw    = int(btn_w * scale)
+            sh    = int(btn_h * scale)
+            bx3   = bx2 - (sw - btn_w) // 2
+            by3   = by2 - (sh - btn_h) // 2
+
+            if sel:
+                gs = pygame.Surface((sw + 6, sh + 6), pygame.SRCALPHA)
+                pygame.draw.rect(gs, (*ec, 40), (0, 0, sw + 6, sh + 6), border_radius=6)
+                screen.blit(gs, (bx3 - 3, by3 - 3))
+                pygame.draw.rect(screen, (60, 60, 130), (bx3, by3, sw, sh), border_radius=5)
+                pygame.draw.rect(screen, ec,            (bx3, by3, sw, sh), 2, border_radius=5)
+                cor_txt = tuple(min(c + 60, 255) for c in ec)
+                cx4, cy4 = bx3 + sw // 2, by3 + 7
+            else:
+                pygame.draw.rect(screen, (25, 25, 55), (bx2, by2, btn_w, btn_h), border_radius=5)
+                pygame.draw.rect(screen, (70, 70, 100), (bx2, by2, btn_w, btn_h), 1, border_radius=5)
+                cor_txt = (120, 120, 120) if sem_uso else (200, 200, 200)
+                cx4, cy4 = bx2 + btn_w // 2, by2 + 7
+
+            icon_s = f.render(_ICONS[i], True, cor_txt)
+            lbl_s  = f.render(label,     True, cor_txt)
+            screen.blit(icon_s, (cx4 - icon_s.get_width() // 2 - 26, cy4))
+            screen.blit(lbl_s,  (cx4 - lbl_s.get_width()  // 2 +  8, cy4))
 
             if info is not None:
-                txt_usos = f.render(f"{info[0]}/{info[1]}", True, (140, 140, 140))
-                screen.blit(txt_usos,
-                    (x_item + (item_w - 4 - txt_usos.get_width()) // 2, y_row + 18))
+                tu = sf.render(f"{info[0]}/{info[1]}", True,
+                               (200, 200, 200) if sel else (140, 140, 140))
+                screen.blit(tu, (cx4 - tu.get_width() // 2, cy4 + 14))
 
     def _draw_summary_panel(self, screen):
         """Painel de resultado exibido ao fim da batalha antes de voltar ao mapa."""
@@ -817,6 +1024,11 @@ class BattleScene(GameScene):
 
         if winner == player:
             self.manager.audio.play_sfx("victory")
+            self.manager.audio.play_sfx("defeat")
+            self._spawn_death_particles(
+                self.enemy_obj.position + pygame.Vector2(
+                    CharacterObject.SIZE // 2, CharacterObject.SIZE // 2),
+                self.battle.enemy.element)
             self._last_summary = self.manager.score.finalizar_batalha(
                 self.battle.enemy, player.hp, player.max_hp)
             self.manager.game.handle_victory(self.battle.enemy)
