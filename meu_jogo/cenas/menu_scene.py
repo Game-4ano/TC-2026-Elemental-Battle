@@ -16,6 +16,18 @@ import pygame
 from meu_jogo.core.game_scene import GameScene
 from meu_jogo.core.config import SCREEN_WIDTH, SCREEN_HEIGHT, WHITE, BLACK
 
+def _to_rgb(color):
+    """Converte listas/tuplas/pygame.Color para tupla (r,g,b) com ints 0-255."""
+    if isinstance(color, pygame.Color):
+        return (color.r, color.g, color.b)
+    try:
+        seq = tuple(int(max(0, min(255, round(c)))) for c in color)
+        if len(seq) >= 3:
+            return (seq[0], seq[1], seq[2])
+    except Exception:
+        pass
+    return (255, 255, 255)
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  Dados de cada elemento
@@ -307,13 +319,15 @@ class MenuScene(GameScene):
                 alpha = int(ba + 50 * math.sin(s["phase"]))
                 r     = s["r"]
                 surf  = pygame.Surface((r * 2 + 2, r * 2 + 2), pygame.SRCALPHA)
-                pygame.draw.circle(surf, (*s["color"], alpha), (r + 1, r + 1), r)
+                _rgb = _to_rgb(s["color"])
+                pygame.draw.circle(surf, (_rgb[0], _rgb[1], _rgb[2], alpha), (r + 1, r + 1), r)
                 screen.blit(surf, (int(s["pos"].x) - r - 1, int(s["pos"].y) - r - 1))
 
     def _draw_silhouettes(self, screen):
         for silh in self._silhouettes:
             sx, sy  = int(silh["x"]), int(silh["y"])
-            col     = (*silh["color"], 38)
+            _c = _to_rgb(silh["color"])
+            col     = (_c[0], _c[1], _c[2], 38)
             stype   = silh["stype"]
             W = H = 90
             s = pygame.Surface((W, H), pygame.SRCALPHA)
@@ -440,10 +454,10 @@ class MenuScene(GameScene):
         # Setas pulsantes
         pulse = int(180 + 70 * math.sin(self._arrow_timer * 2.5))
         for (atacante, vitima) in VANTAGENS:
-            p1      = pos_map[atacante]
-            p2      = pos_map[vitima]
-            base    = next(e["cor_clara"] for e in ELEMENTOS if e["key"] == atacante)
-            cor_p   = tuple(int(c * pulse / 255) for c in base)
+            p1 = pos_map[atacante]
+            p2 = pos_map[vitima]
+            base = next(e["cor_clara"] for e in ELEMENTOS if e["key"] == atacante)
+            cor_p = tuple(int(c * pulse / 255) for c in base)
             _draw_arrow(screen, p1[0], p1[1], p2[0], p2[1], cor_p)
 
         # Rótulo "vence" no meio de cada seta

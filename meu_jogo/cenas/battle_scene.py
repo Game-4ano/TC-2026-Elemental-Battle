@@ -27,6 +27,21 @@ ELEMENT_NAMES_PT = {
     "Electric": "Eletrico", "Dark": "Sombra", "Air": "Vento",
 }
 
+
+def _to_rgb(color):
+    """Converte diferentes formatos de cor para uma tupla (r,g,b) com ints 0-255.
+    Fallback para branco se inválido."""
+    if isinstance(color, pygame.Color):
+        return (color.r, color.g, color.b)
+    try:
+        # aceita listas/tuplas de números (possivelmente floats)
+        seq = tuple(int(max(0, min(255, round(c)))) for c in color)
+        if len(seq) >= 3:
+            return (seq[0], seq[1], seq[2])
+    except Exception:
+        pass
+    return (255, 255, 255)
+
 # Escala do sprite na tela de batalha.
 # 16x16 x 5 = 80x80 px
 _SPRITE_SCALE = 5
@@ -74,11 +89,13 @@ class Projectile(GameObject):
             alpha  = int(180 * (i / max(len(self._trail), 1)))
             radius = max(2, int(self.RADIUS * (i / max(len(self._trail), 1))))
             surf   = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
-            pygame.draw.circle(surf, (*self.color, alpha), (radius, radius), radius)
+            _rgb = _to_rgb(self.color)
+            pygame.draw.circle(surf, (_rgb[0], _rgb[1], _rgb[2], alpha), (radius, radius), radius)
             screen.blit(surf, (int(pos.x) - radius, int(pos.y) - radius))
-        pygame.draw.circle(screen, self.color,
+        _rgb = _to_rgb(self.color)
+        pygame.draw.circle(screen, _rgb,
             (int(self.position.x), int(self.position.y)), self.RADIUS)
-        bright = tuple(min(c + 100, 255) for c in self.color)
+        bright = tuple(min(c + 100, 255) for c in _rgb)
         pygame.draw.circle(screen, bright,
             (int(self.position.x), int(self.position.y)), self.RADIUS - 4)
 
@@ -462,7 +479,8 @@ class BattleScene(GameScene):
             alpha = int(110 * 4 * t * (1 - t))     # sobe e some suavemente
             r     = p["r"]
             s     = pygame.Surface((r * 2, r * 2), pygame.SRCALPHA)
-            pygame.draw.circle(s, (*p["color"], alpha), (r, r), r)
+            _rgb = _to_rgb(p["color"])
+            pygame.draw.circle(s, (_rgb[0], _rgb[1], _rgb[2], alpha), (r, r), r)
             surface.blit(s, (int(p["pos"].x) - r, int(p["pos"].y) - r))
 
     def _spawn_impact(self, pos: pygame.Vector2, element: str):
@@ -681,15 +699,19 @@ class BattleScene(GameScene):
         # Partículas de impacto
         for p in self._particles:
             alpha = int(255 * max(p["life"], 0) / 0.7)
+            alpha = max(0, min(255, alpha))
             s = pygame.Surface((p["r"] * 2, p["r"] * 2), pygame.SRCALPHA)
-            pygame.draw.circle(s, (*p["color"], alpha), (p["r"], p["r"]), p["r"])
+            _rgb = _to_rgb(p["color"])
+            pygame.draw.circle(s, (_rgb[0], _rgb[1], _rgb[2], alpha), (p["r"], p["r"]), p["r"])
             surface.blit(s, (int(p["pos"].x) - p["r"], int(p["pos"].y) - p["r"]))
 
         # Partículas de morte
         for p in self._death_particles:
             alpha = int(255 * max(p["life"], 0) / 1.5)
+            alpha = max(0, min(255, alpha))
             s = pygame.Surface((p["r"] * 2, p["r"] * 2), pygame.SRCALPHA)
-            pygame.draw.circle(s, (*p["color"], alpha), (p["r"], p["r"]), p["r"])
+            _rgb = _to_rgb(p["color"])
+            pygame.draw.circle(s, (_rgb[0], _rgb[1], _rgb[2], alpha), (p["r"], p["r"]), p["r"])
             surface.blit(s, (int(p["pos"].x) - p["r"], int(p["pos"].y) - p["r"]))
 
         # Flash de super efetivo

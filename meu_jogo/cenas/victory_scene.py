@@ -7,6 +7,19 @@ from meu_jogo.core.config import SCREEN_WIDTH, SCREEN_HEIGHT
 from meu_jogo.core.game_state import GameState
 
 
+def _to_rgb(color):
+    """Converte listas/tuplas/pygame.Color para tupla (r,g,b) com ints 0-255."""
+    if isinstance(color, pygame.Color):
+        return (color.r, color.g, color.b)
+    try:
+        seq = tuple(int(max(0, min(255, round(c)))) for c in color)
+        if len(seq) >= 3:
+            return (seq[0], seq[1], seq[2])
+    except Exception:
+        pass
+    return (255, 255, 255)
+
+
 class VictoryScene(GameScene):
     """Tela de vitoria exibida quando todos os chefes sao derrotados."""
 
@@ -71,7 +84,8 @@ class VictoryScene(GameScene):
         for p in self._particles:
             alpha = int(255 * max(p["life"], 0) / 3.5)
             s = pygame.Surface((p["r"] * 2, p["r"] * 2), pygame.SRCALPHA)
-            pygame.draw.circle(s, (*p["color"], alpha), (p["r"], p["r"]), p["r"])
+            _rgb = _to_rgb(p["color"])
+            pygame.draw.circle(s, (_rgb[0], _rgb[1], _rgb[2], alpha), (p["r"], p["r"]), p["r"])
             screen.blit(s, (int(p["pos"].x) - p["r"], int(p["pos"].y) - p["r"]))
 
         # Texto com fade-in
