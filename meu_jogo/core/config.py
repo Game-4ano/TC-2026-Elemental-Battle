@@ -1,0 +1,31 @@
+"""
+Constantes globais do jogo.
+"""
+
+# Configuração da janela
+SCREEN_WIDTH = 800
+SCREEN_HEIGHT = 500
+FPS = 144
+TITLE = "Elemental Battle"
+
+# Cores
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+GREEN = (70, 170, 70)
+DARK_GREEN = (40, 110, 40)
+RED = (200, 60, 60)
+BLUE = (70, 120, 220)
+YELLOW = (220, 200, 70)
+BROWN = (120, 80, 40)
+GRAY = (180, 180, 180)
+
+# Progressão
+XP_PER_LEVEL = 100
+
+HP_LEVEL_INCREMENT = 15
+DAMAGE_LEVEL_INCREMENT = 5
+DEFENSE_LEVEL_INCREMENT = 3
+
+DEFAULT_XP_REWARD = 50
+BOSS_XP_REWARD = 120
+TILE_SIZE = 32
