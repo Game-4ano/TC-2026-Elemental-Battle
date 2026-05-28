@@ -1046,29 +1046,34 @@ class BattleScene(GameScene):
 
         if winner == player:
             self.manager.audio.play_sfx("victory")
-            self.manager.audio.play_sfx("defeat")
             self._spawn_death_particles(
                 self.enemy_obj.position + pygame.Vector2(
                     CharacterObject.SIZE // 2, CharacterObject.SIZE // 2),
                 self.battle.enemy.element)
             self._last_summary = self.manager.score.finalizar_batalha(
                 self.battle.enemy, player.hp, player.max_hp)
-            self.manager.game.handle_victory(self.battle.enemy)
 
-            if self.manager.game.state == GameState.GAME_COMPLETE:
+            # Dá XP ao jogador sem avançar o índice de mapa legado
+            from meu_jogo.core.config import BOSS_XP_REWARD, DEFAULT_XP_REWARD
+            xp = BOSS_XP_REWARD if self.battle.enemy.is_boss else DEFAULT_XP_REWARD
+            player.gain_xp(xp)
+
+            # Verifica se todos os 5 bosses de sala foram derrotados
+            from meu_jogo.data.characters_data import ROOM_BOSS
+            todos_mortos = all(b.hp <= 0 for b in ROOM_BOSS.values())
+
+            if todos_mortos:
                 self.message = "Vitoria! Voce venceu o jogo!"
-                self.manager.notificacoes.adicionar(
-                    f"+{self._last_summary['score_batalha']} pontos!",
-                    cor=(255, 215, 0), duracao=3.0, destaque=True)
-                self.finished = True
-                # Vai para a VictoryScene apos o jogador pressionar ENTER
+                self.manager.game.state = GameState.GAME_COMPLETE
                 self._pending_victory = True
             else:
                 self.message = "Vitoria!"
-                self.manager.notificacoes.adicionar(
-                    f"+{self._last_summary['score_batalha']} pontos!",
-                    cor=(255, 215, 0), duracao=3.0, destaque=True)
-                self.finished = True
+                self._pending_victory = False
+
+            self.manager.notificacoes.adicionar(
+                f"+{self._last_summary['score_batalha']} pontos!",
+                cor=(255, 215, 0), duracao=3.0, destaque=True)
+            self.finished = True
         else:
             self.manager.audio.play_sfx("defeat")
             self.manager.game.state = GameState.GAME_OVER
@@ -1093,6 +1098,13 @@ class BattleScene(GameScene):
         player = self.manager.game.player
         if not player.is_alive():
             player.hp = player.max_hp
+
+        # Garante que o mapa aberto está carregado antes de trocar de cena
+        try:
+            self.manager.map_manager.load_map("MUNDO_ABERTO")
+        except Exception:
+            pass
+
         from meu_jogo.cenas.campo_de_treino import CampoDeTreinoScene
-        self.manager.scene_manager.change_scene(
-            CampoDeTreinoScene(self.manager))
+        nova_cena = CampoDeTreinoScene(self.manager)
+        self.manager.scene_manager.change_scene(nova_cena)
