@@ -116,7 +116,7 @@ class VictoryScene(GameScene):
             rec = f_sm.render(f"Recorde: {self._highscore}", True, (200, 200, 200))
             surf.blit(rec, (cx - rec.get_width() // 2, cy + 30))
 
-        hint = f_sm.render("ENTER = menu principal", True, (160, 200, 160))
+        hint = f_sm.render("ENTER = Continuar", True, (160, 200, 160))
         surf.blit(hint, (cx - hint.get_width() // 2, cy + 80))
 
         screen.blit(surf, (0, 0))
@@ -126,8 +126,9 @@ class VictoryScene(GameScene):
 
     # -----------------------------------------------------------------------
     def _ir_para_menu(self):
-        from meu_jogo.cenas.menu_scene import MenuScene
+        from meu_jogo.cenas.campo_de_treino import CampoDeTreinoScene
         player = self.manager.game.player
         player.hp = player.max_hp
-        self.manager.game.state = GameState.MENU
-        self.manager.scene_manager.change_scene(MenuScene(self.manager))
+        self.manager.map_manager.load_map("MUNDO_ABERTO")
+        self.manager.scene_manager.change_scene(
+            CampoDeTreinoScene(self.manager))

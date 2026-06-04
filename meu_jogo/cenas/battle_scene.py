@@ -1093,6 +1093,13 @@ class BattleScene(GameScene):
         player = self.manager.game.player
         if not player.is_alive():
             player.hp = player.max_hp
+
+        # Garante que o mapa aberto está carregado antes de trocar de cena
+        try:
+            self.manager.map_manager.load_map("MUNDO_ABERTO")
+        except Exception:
+            pass
+
         from meu_jogo.cenas.campo_de_treino import CampoDeTreinoScene
-        self.manager.scene_manager.change_scene(
-            CampoDeTreinoScene(self.manager))
+        nova_cena = CampoDeTreinoScene(self.manager)
+        self.manager.scene_manager.change_scene(nova_cena)
