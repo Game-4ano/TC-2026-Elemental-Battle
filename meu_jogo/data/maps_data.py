@@ -27,6 +27,7 @@ from meu_jogo.data.characters_data import (
     hydra, thunder_beast, storm_eagle, magma_titan,
     ROOM_BOSS,
 )
+from meu_jogo.core.map_builder import build_themed_room, make_room_tiles
 
 # Compatibilidade com Game original
 map1 = GameMap("Floresta", enemies=[slime, goblin, wolf], boss=forest_guardian)
@@ -186,23 +187,8 @@ MUNDO_ABERTO_MATRIX = [
 
 
 # -----------------------------------------------------------------------
-# Salas de batalha 12×10
+# Salas de batalha 12×10  (montadas por core.map_builder.build_themed_room)
 # -----------------------------------------------------------------------
-def _build_themed_room(floor_tile, border_tile, deco_pattern, exit_row, exit_col):
-    """
-    Gera matriz 12×10 (12 cols, 10 linhas) com bordas, chão, decorações e saída.
-    deco_pattern: lista de (row, col, tile_key) para decorações internas
-    exit_row, exit_col: posição do portal de saída
-    """
-    rows, cols = 10, 12
-    room = [[border_tile if (r == 0 or r == rows-1 or c == 0 or c == cols-1)
-             else floor_tile
-             for c in range(cols)] for r in range(rows)]
-    for r, c, tk in deco_pattern:
-        if 0 < r < rows-1 and 0 < c < cols-1:
-            room[r][c] = tk
-    room[exit_row][exit_col] = "O"
-    return room
 
 
 # --- SALA ÁGUA (Hydra) — Caverna Submersa ---
@@ -232,7 +218,7 @@ WATER_ROOM_TILES_BATTLE = {
     "bb": BubbleTile(),
     "O":  PortalTile("Saída", (50, 210, 100), "MUNDO_ABERTO", 2, 14),
 }
-_agua_raw = _build_themed_room("A", "X", _AGUA_DECO, 1, 6)
+_agua_raw = build_themed_room("A", "X", _AGUA_DECO, 1, 6)
 SALA_BATALHA_AGUA_MATRIX = _agua_raw
 
 
@@ -261,7 +247,7 @@ FIRE_ROOM_TILES_BATTLE = {
     "ld": LavaDropTile(),
     "O":  PortalTile("Saída", (50, 210, 100), "MUNDO_ABERTO", 35, 14),
 }
-_fogo_raw = _build_themed_room("V", "X", _FOGO_DECO, 8, 6)
+_fogo_raw = build_themed_room("V", "X", _FOGO_DECO, 8, 6)
 SALA_BATALHA_FOGO_MATRIX = _fogo_raw
 
 
@@ -290,7 +276,7 @@ WIND_ROOM_TILES_BATTLE = {
     "N": FeatherTile(),
     "O": PortalTile("Saída", (50, 210, 100), "MUNDO_ABERTO", 20, 2),  # col20, row2 — abaixo do portal Vento
 }
-_vento_raw = _build_themed_room("S", "X", _VENTO_DECO, 1, 6)
+_vento_raw = build_themed_room("S", "X", _VENTO_DECO, 1, 6)
 SALA_BATALHA_VENTO_MATRIX = _vento_raw
 
 
@@ -321,7 +307,7 @@ ELEC_ROOM_TILES_BATTLE = {
     "nb": NeonBorderTile(),
     "O":  PortalTile("Saída", (50, 210, 100), "MUNDO_ABERTO", 20, 25),
 }
-_elec_raw = _build_themed_room("M", "X", _ELEC_DECO, 8, 6)
+_elec_raw = build_themed_room("M", "X", _ELEC_DECO, 8, 6)
 SALA_BATALHA_ELETRICA_MATRIX = _elec_raw
 
 
@@ -343,24 +329,18 @@ SHADOW_ROOM_TILES_BATTLE = {
     "m": DarkMistTile(),
     "O": PortalTile("Saída", (50, 210, 100), "MUNDO_ABERTO", 5, 4),
 }
-_sombra_raw = _build_themed_room("v", "X", _SOMBRA_DECO, 8, 6)
+_sombra_raw = build_themed_room("v", "X", _SOMBRA_DECO, 8, 6)
 SALA_BATALHA_SOMBRA_MATRIX = _sombra_raw
 
 
 # -----------------------------------------------------------------------
 # Tile types para salas (herdam GLOBAL + sobrescritas)
 # -----------------------------------------------------------------------
-def _make_room_tiles(battle_overrides):
-    base = dict(GLOBAL_TILE_TYPES)
-    base.update(battle_overrides)
-    return base
-
-
-WATER_ROOM_TILES  = _make_room_tiles(WATER_ROOM_TILES_BATTLE)
-FIRE_ROOM_TILES   = _make_room_tiles(FIRE_ROOM_TILES_BATTLE)
-WIND_ROOM_TILES   = _make_room_tiles(WIND_ROOM_TILES_BATTLE)
-ELEC_ROOM_TILES   = _make_room_tiles(ELEC_ROOM_TILES_BATTLE)
-SHADOW_ROOM_TILES = _make_room_tiles(SHADOW_ROOM_TILES_BATTLE)
+WATER_ROOM_TILES  = make_room_tiles(GLOBAL_TILE_TYPES, WATER_ROOM_TILES_BATTLE)
+FIRE_ROOM_TILES   = make_room_tiles(GLOBAL_TILE_TYPES, FIRE_ROOM_TILES_BATTLE)
+WIND_ROOM_TILES   = make_room_tiles(GLOBAL_TILE_TYPES, WIND_ROOM_TILES_BATTLE)
+ELEC_ROOM_TILES   = make_room_tiles(GLOBAL_TILE_TYPES, ELEC_ROOM_TILES_BATTLE)
+SHADOW_ROOM_TILES = make_room_tiles(GLOBAL_TILE_TYPES, SHADOW_ROOM_TILES_BATTLE)
 
 
 # -----------------------------------------------------------------------

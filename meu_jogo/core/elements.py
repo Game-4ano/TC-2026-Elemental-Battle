@@ -10,6 +10,12 @@ element_advantage = {
     "Dark": "Fire",
 }
 
+# Fonte unica dos nomes PT-BR de elemento (consumida por menu e batalha).
+ELEMENT_NAMES_PT = {
+    "Fire": "Fogo", "Water": "Agua", "Grass": "Planta",
+    "Electric": "Eletrico", "Dark": "Sombra", "Air": "Vento",
+}
+
 
 def calculate_damage(attacker, defender):
     base_damage = attacker.damage

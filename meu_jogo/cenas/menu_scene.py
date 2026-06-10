@@ -15,6 +15,7 @@ import pygame
 
 from meu_jogo.core.game_scene import GameScene
 from meu_jogo.core.config import SCREEN_WIDTH, SCREEN_HEIGHT, WHITE, BLACK
+from meu_jogo.core.elements import element_advantage, ELEMENT_NAMES_PT
 
 def _to_rgb(color):
     """Converte listas/tuplas/pygame.Color para tupla (r,g,b) com ints 0-255."""
@@ -36,7 +37,7 @@ def _to_rgb(color):
 ELEMENTOS = [
     {
         "key":      "Fire",
-        "nome":     "Fogo",
+        "nome":     ELEMENT_NAMES_PT["Fire"],
         "fraqueza": "Water",
         "cor":      (220,  70,  20),
         "cor_clara":(255, 140,  60),
@@ -45,7 +46,7 @@ ELEMENTOS = [
     },
     {
         "key":      "Water",
-        "nome":     "Agua",
+        "nome":     ELEMENT_NAMES_PT["Water"],
         "fraqueza": "Electric",
         "cor":      ( 30, 120, 220),
         "cor_clara":( 90, 180, 255),
@@ -54,7 +55,7 @@ ELEMENTOS = [
     },
     {
         "key":      "Grass",
-        "nome":     "Planta",
+        "nome":     ELEMENT_NAMES_PT["Grass"],
         "fraqueza": "Fire",
         "cor":      ( 40, 160,  50),
         "cor_clara":( 90, 220,  90),
@@ -63,7 +64,7 @@ ELEMENTOS = [
     },
     {
         "key":      "Electric",
-        "nome":     "Eletrico",
+        "nome":     ELEMENT_NAMES_PT["Electric"],
         "fraqueza": "Grass",
         "cor":      (200, 170,   0),
         "cor_clara":(255, 230,  60),
@@ -72,7 +73,7 @@ ELEMENTOS = [
     },
     {
         "key":      "Dark",
-        "nome":     "Sombra",
+        "nome":     ELEMENT_NAMES_PT["Dark"],
         "fraqueza": "Electric",
         "cor":      (100,  30, 170),
         "cor_clara":(170,  80, 240),
@@ -81,14 +82,9 @@ ELEMENTOS = [
     },
 ]
 
-# Quem vence quem: atacante derrota vitima
-VANTAGENS = [
-    ("Fire",     "Grass"),
-    ("Water",    "Fire"),
-    ("Grass",    "Water"),
-    ("Electric", "Water"),
-    ("Dark",     "Fire"),
-]
+# Quem vence quem (atacante -> vitima). Derivado da fonte unica em core.elements
+# para nao duplicar a tabela (element_advantage preserva a ordem de insercao).
+VANTAGENS = list(element_advantage.items())
 
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -2,7 +2,7 @@ import pygame
 from meu_jogo.entidades.character import Character
 from meu_jogo.core.game import Game
 from meu_jogo.core.game_manager import GameManager
-from meu_jogo.core.map import MapManager
+from meu_jogo.core.map_manager import MapManager
 from meu_jogo.data.maps_data import maps, ALL_MAP_DATA
 
 
