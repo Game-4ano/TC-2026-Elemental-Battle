@@ -23,7 +23,7 @@ class GameOverScene(GameScene):
     # -----------------------------------------------------------------------
     def handle_event(self, event: pygame.event.Event):
         if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
-            self._ir_para_menu()
+            self._ir_para_arena()
 
     def update(self, dt: float):
         if not self._fade_done:
@@ -68,7 +68,7 @@ class GameOverScene(GameScene):
             rec_txt = f_hint.render(f"Recorde: {self._highscore}", True, (160, 160, 160))
             surf.blit(rec_txt, (cx - rec_txt.get_width() // 2, cy + 50))
 
-        hint = f_hint.render("ENTER = menu principal", True, (160, 160, 160))
+        hint = f_hint.render("ENTER = voltar para a arena", True, (160, 200, 160))
         surf.blit(hint, (cx - hint.get_width() // 2, cy + 90))
 
         screen.blit(surf, (0, 0))
@@ -77,9 +77,9 @@ class GameOverScene(GameScene):
         self.draw(screen)
 
     # -----------------------------------------------------------------------
-    def _ir_para_menu(self):
-        from meu_jogo.cenas.menu_scene import MenuScene
+    def _ir_para_arena(self):
+        from meu_jogo.cenas.campo_de_treino import CampoDeTreinoScene
         player = self.manager.game.player
-        player.hp = player.max_hp
-        self.manager.game.state = GameState.MENU
-        self.manager.scene_manager.change_scene(MenuScene(self.manager))
+        player.hp = player.max_hp          # restaura HP para poder jogar
+        self.manager.game.state = GameState.TRAINING
+        self.manager.scene_manager.change_scene(CampoDeTreinoScene(self.manager))

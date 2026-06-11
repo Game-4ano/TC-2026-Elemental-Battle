@@ -179,11 +179,6 @@ MUNDO_ABERTO_MATRIX = [
   [X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X], # 29
 ]
 
-# Região OESTE — Caverna das Águas (cols 0-2, já integradas acima)
-# mas vamos completar o mapa de água como overlay usando as colunas 0-2
-# As linhas 22-28 do oeste têm tiles I/Y  (IceTile/CrystalTile)
-# As linhas 8-11 do corredor têm R/P
-
 
 # -----------------------------------------------------------------------
 # Salas de batalha 12×10
@@ -225,7 +220,7 @@ _AGUA_DECO = [
 WATER_ROOM_TILES_BATTLE = {
     "X":  WallTile(),
     "A":  IceArenaTile(),
-    "w":  DeepWaterTile(),
+    "w":  DeepWaterTile(),   # FIX 1: tile "w" estava ausente — causava None e visual errado
     "Y":  CrystalTile(),
     "P":  WaterTile(name="Poça Brilhante", color=(60, 140, 220), damage=0),
     "st": IceStalactiteTile(),
@@ -259,7 +254,9 @@ FIRE_ROOM_TILES_BATTLE = {
     "H":  HotRockTile(),
     "K":  EmberTile(),
     "ld": LavaDropTile(),
-    "O":  PortalTile("Saída", (50, 210, 100), "MUNDO_ABERTO", 35, 14),
+    # FIX 2: col 35 é zona de parede/lava no mundo aberto → corrigido para col 29
+    # (borda leste da clareira central, tile caminhável)
+    "O":  PortalTile("Saída", (50, 210, 100), "MUNDO_ABERTO", 29, 14),
 }
 _fogo_raw = _build_themed_room("V", "X", _FOGO_DECO, 8, 6)
 SALA_BATALHA_FOGO_MATRIX = _fogo_raw
@@ -288,7 +285,7 @@ WIND_ROOM_TILES_BATTLE = {
     "K": SkyVoidTile(),
     "Z": SkyPathTile(),
     "N": FeatherTile(),
-    "O": PortalTile("Saída", (50, 210, 100), "MUNDO_ABERTO", 20, 2),  # col20, row2 — abaixo do portal Vento
+    "O": PortalTile("Saída", (50, 210, 100), "MUNDO_ABERTO", 20, 2),
 }
 _vento_raw = _build_themed_room("S", "X", _VENTO_DECO, 1, 6)
 SALA_BATALHA_VENTO_MATRIX = _vento_raw
@@ -395,7 +392,7 @@ ALL_MAP_DATA = {
 
 
 # -----------------------------------------------------------------------
-# Regiões para notificações de área (Tarefa 4.5)
+# Regiões para notificações de área
 # -----------------------------------------------------------------------
 REGIONS = {
     "caverna_aguas": {

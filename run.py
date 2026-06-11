@@ -5,9 +5,9 @@ import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 try:
-    from meu_jogo.main import main_game
+    from meu_jogo.main import main
     if __name__ == "__main__":
-        main_game()
+        main()
 except ImportError as e:
     print(f"Erro ao importar o jogo: {e}")
     print("\nCertifique-se de que está a executar este script a partir da raiz do projeto:")
