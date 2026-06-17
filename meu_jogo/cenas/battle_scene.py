@@ -695,7 +695,7 @@ class BattleScene(GameScene):
         else:
             self.manager.audio.play_sfx("defeat")
             self.manager.game.state = GameState.GAME_OVER
-            # Va direto para GameOverScene
+            self.finished = True
             from meu_jogo.cenas.game_over_scene import GameOverScene
             total = self.manager.score.get_total_score()
             self.manager.scene_manager.change_scene(
