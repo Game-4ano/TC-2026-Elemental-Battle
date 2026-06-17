@@ -97,14 +97,17 @@ class BattleScene(GameScene):
         attacker_obj.play_attack()
 
         def on_hit():
-            result    = action.execute(attacker_obj.character, defender_obj.character)
+            if is_player_attack:
+                result = self.battle.execute_player_action(action)
+            else:
+                result = self.battle.execute_enemy_action(action)
             dano      = result["damage"]
             flash_col = ELEMENT_COLORS.get(atk_elem, WHITE)
             defender_obj.take_hit(flash_color=flash_col)
             self._spawn_impact(defender_obj.position, atk_elem)
             self.manager.audio.play_sfx("hit")
             self._screen_shake = 0.18
-            self._shake_amount = min(dano / 12.0, 4.0)
+            self._shake_amount = min(dano / 10.0, 8.0)
 
             # Texto flutuante de dano
             is_special  = result.get("type") == "special"
@@ -238,7 +241,7 @@ class BattleScene(GameScene):
 
         elif idx == 2:   # Defender
             if self._defend_action.can_use():
-                self._defend_action.execute(self.battle.player, self.battle.enemy)
+                self.battle.execute_player_action(self._defend_action)
                 self.message = f"{self.battle.player.name} adotou postura defensiva!"
                 self.manager.notificacoes.adicionar(
                     f"Defendendo! ({self._defend_action.uses_left} usos restantes)",
@@ -249,7 +252,7 @@ class BattleScene(GameScene):
 
         elif idx == 3:   # Curar
             if self._heal_action.can_use():
-                result = self._heal_action.execute(self.battle.player, self.battle.enemy)
+                result = self.battle.execute_player_action(self._heal_action)
                 heal   = result["heal"]
                 self.message = f"{self.battle.player.name} se curou em {heal} HP!"
                 # Texto flutuante verde de cura
@@ -278,7 +281,7 @@ class BattleScene(GameScene):
         """Pergunta a IA qual acao usar e a executa."""
         if self.battle.is_over():
             return
-        action = self.battle.enemy_ai.choose_action(self.battle)
+        action = self.battle.choose_enemy_action()
 
         if isinstance(action, (AttackAction, SpecialAttackAction)):
             self._launch_projectile(
@@ -286,7 +289,7 @@ class BattleScene(GameScene):
                 action, is_player_attack=False)
 
         elif isinstance(action, HealAction):
-            result = action.execute(self.battle.enemy, self.battle.player)
+            result = self.battle.execute_enemy_action(action)
             heal   = result["heal"]
             self.message = f"{self.battle.enemy.name} se recuperou em {heal} HP!"
             self._damage_texts.append({
@@ -300,7 +303,7 @@ class BattleScene(GameScene):
             })
 
         elif isinstance(action, DefendAction):
-            result = action.execute(self.battle.enemy, self.battle.player)
+            self.battle.execute_enemy_action(action)
             self.message = f"{self.battle.enemy.name} adotou postura defensiva!"
 
     # -----------------------------------------------------------------------
@@ -476,81 +479,8 @@ class BattleScene(GameScene):
             screen.blit(combo_txt, (cx - combo_txt.get_width() // 2, 100))
 
     def _draw_themed_background(self, surface: pygame.Surface):
-        elem = self.battle.enemy.element
-        t    = pygame.time.get_ticks() / 1000.0
-        w, h = SCREEN_WIDTH, SCREEN_HEIGHT
-
-        _BASE = {
-            "Water":    ((5,  15, 60),  (15, 50, 130)),
-            "Fire":     ((55,  8,  0),  (100, 28,   5)),
-            "Air":      ((22, 18, 55),  (45,  75, 130)),
-            "Electric": ((8,   8, 45),  (50,  45,   8)),
-            "Dark":     ((3,   2, 14),  (18,   4,  36)),
-            "Grass":    ((4,  22,  4),  (15,  65,  15)),
-        }
-        c1, c2 = _BASE.get(elem, ((15, 15, 30), (30, 30, 60)))
-        surface.fill(c1)
-
-        for i in range(5):
-            ratio = (i + 1) / 5
-            mc    = tuple(int(c1[j] + (c2[j] - c1[j]) * ratio) for j in range(3))
-            bnd   = pygame.Surface((w, h // 5), pygame.SRCALPHA)
-            bnd.fill((*mc, 50 + i * 10))
-            surface.blit(bnd, (0, h - (h // 5) * (i + 1)))
-
-        if elem == "Water":
-            for i in range(3):
-                pts = [(x, int(h * 0.55 + 10 * math.sin(t * 1.2 + x * 0.018 + i * 2) + i * 28))
-                       for x in range(0, w + 12, 10)]
-                if len(pts) >= 2:
-                    pygame.draw.lines(surface, (30 + i * 10, 110 + i * 20, 200), False, pts, 1)
-
-        elif elem == "Fire":
-            for i in range(6):
-                bx2 = int((i * w / 6 + t * 30) % w)
-                by2 = int(h * 0.85 - abs(math.sin(t * 1.5 + i)) * h * 0.22)
-                cv  = int(160 + 95 * abs(math.sin(t * 2 + i)))
-                s   = pygame.Surface((4, 4), pygame.SRCALPHA)
-                pygame.draw.circle(s, (cv, cv // 3, 0, 150), (2, 2), 2)
-                surface.blit(s, (bx2, by2))
-
-        elif elem == "Electric":
-            for gx in range(0, w, 50):
-                a = int(18 + 12 * abs(math.sin(t * 3 + gx * 0.04)))
-                ls = pygame.Surface((1, h), pygame.SRCALPHA)
-                ls.fill((0, 200, 0, a))
-                surface.blit(ls, (gx, 0))
-            for gy in range(0, h, 50):
-                a = int(18 + 12 * abs(math.sin(t * 3 + gy * 0.04)))
-                ls = pygame.Surface((w, 1), pygame.SRCALPHA)
-                ls.fill((0, 200, 0, a))
-                surface.blit(ls, (0, gy))
-
-        elif elem == "Dark":
-            for i in range(6):
-                px2 = int(w * (i / 6) + 20 * math.sin(t * 0.7 + i))
-                py2 = int(h * 0.4 + 30 * math.cos(t * 0.5 + i * 1.3))
-                a   = int(50 + 60 * abs(math.sin(t * 1.2 + i)))
-                s   = pygame.Surface((8, 8), pygame.SRCALPHA)
-                pygame.draw.circle(s, (160, 0, 220, a), (4, 4), 4)
-                surface.blit(s, (px2, py2))
-
-        elif elem == "Air":
-            for i in range(3):
-                cx2 = int((t * 35 + i * 220) % (w + 120)) - 60
-                cy2 = 60 + i * 55
-                cs  = pygame.Surface((140, 44), pygame.SRCALPHA)
-                pygame.draw.ellipse(cs, (200, 215, 240, 18), (0, 10, 140, 24))
-                pygame.draw.ellipse(cs, (210, 225, 250, 14), (20, 0, 100, 30))
-                surface.blit(cs, (cx2, cy2))
-
-        elif elem == "Grass":
-            for i in range(4):
-                lx = int((t * 22 + i * 160) % (w + 40))
-                ly = int(h * 0.3 + i * 35 + 15 * math.sin(t * 0.8 + i))
-                ls = pygame.Surface((6, 18), pygame.SRCALPHA)
-                pygame.draw.polygon(ls, (30, 110, 30, 160), [(3, 0), (6, 18), (0, 18)])
-                surface.blit(ls, (lx, ly))
+        from meu_jogo.cenas.battle.backgrounds import draw_themed_background
+        draw_themed_background(surface, self.battle.enemy.element)
 
     def _draw_turn_indicator(self, surface: pygame.Surface):
         if self.finished or self.battle.is_over():

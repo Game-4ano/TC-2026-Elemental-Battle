@@ -1,20 +1,9 @@
 """
 Constantes/helpers compartilhados da tela de batalha.
-
-ELEMENT_COLORS e a paleta especifica da batalha (mantida por-tela por decisao
-de design; mapa e menu usam paletas proprias).
 """
 
 import pygame
-
-ELEMENT_COLORS = {
-    "Fire":     (255, 110,  30),
-    "Water":    ( 40, 160, 255),
-    "Grass":    ( 70, 210,  70),
-    "Electric": (255, 235,  30),
-    "Dark":     (150,  40, 220),
-    "Air":      (190, 230, 255),
-}
+from meu_jogo.core.elements import ELEMENT_COLORS  # noqa: F401 — reexportado para imports existentes
 
 
 def _to_rgb(color):

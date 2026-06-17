@@ -16,6 +16,17 @@ ELEMENT_NAMES_PT = {
     "Electric": "Eletrico", "Dark": "Sombra", "Air": "Vento",
 }
 
+# Cores canonicas por elemento — fonte unica para menu, batalha e VFX.
+ELEMENT_COLORS: dict[str, tuple] = {
+    "Fire":     (255, 110,  30),
+    "Water":    ( 40, 160, 255),
+    "Grass":    ( 70, 210,  70),
+    "Electric": (255, 235,  30),
+    "Dark":     (150,  40, 220),
+    "Air":      (190, 230, 255),
+}
+
+
 
 def calculate_damage(attacker, defender):
     base_damage = attacker.damage

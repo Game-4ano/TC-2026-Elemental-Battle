@@ -24,7 +24,7 @@ REGION_TINTS = {
     "vulcao":           (200,  60,   0, 34),
     "ceu_ventos":       (180, 220, 255, 28),
     "terra_trovejante": (200, 190,   0, 30),
-    "centro":           ( 30, 160,  30, 18),
+    "centro":           ( 30, 160,  30, 28),
 }
 
 # Lookup rápido (col, row) → nome da região — construído na importação

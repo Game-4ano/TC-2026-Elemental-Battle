@@ -14,8 +14,7 @@ main.py
 Responsabilidade:
 
 * Ponto de entrada do jogo.
-* Deve apenas inicializar o GameManager.
-* Definir a cena inicial do jogo.
+* Inicializa o player, Game, MapManager e GameManager.
 
 Regras:
 
@@ -28,85 +27,76 @@ Regras:
 PASTA: meu_jogo/core/
 Responsável pela infraestrutura do jogo (motor do jogo).
 
-Aqui ficam as partes responsáveis por controlar o funcionamento geral do jogo.
-
 Arquivos e responsabilidades:
 
 game_manager.py
 
-* Inicializa bibliotecas (pygame).
-* Cria a janela do jogo.
-* Controla o loop principal do jogo.
-* Loop principal:
-  eventos → update → render.
-* Controla FPS.
-* Controla encerramento do jogo.
+* Inicializa pygame, cria a janela, controla o loop principal.
+* Loop principal: eventos → update → render.
 
 scene_manager.py
 
-* Gerencia qual cena está ativa no momento.
-* Permite trocar de cena.
-
-Exemplos de troca de cena:
-menu → treino
-treino → batalha
-batalha → vitória
-batalha → game over
+* Gerencia qual cena está ativa. Permite trocar de cena.
 
 config.py
 
-* Guarda configurações globais do jogo.
-
-Exemplos:
-
-* tamanho da janela (500x500)
-* FPS
-* título da janela
-* XP por nível
-* incrementos de atributos por nível
+* Constantes globais: tamanho da janela (800x500), FPS, título, cores, XP.
 
 game_state.py
 
-* Define os estados globais do jogo.
+* Enum de estados globais: MENU, TRAINING, BATTLE, GAME_OVER, GAME_COMPLETE.
 
-Exemplos:
-MENU
-BATTLE
-MAP_COMPLETE
-GAME_OVER
-GAME_COMPLETE
+game_scene.py
 
-battle.py
-
-* Controla o sistema de batalha.
-* Executa ações do jogador.
-* Executa turno do inimigo.
-* Verifica quando a batalha termina.
-* Define o vencedor.
+* Classe base abstrata para todas as cenas (handle_event, update, draw).
 
 game.py
 
-* Controla o fluxo geral do jogo.
-* Controla progressão entre mapas.
-* Inicia novas batalhas.
-* Gerencia vitória e derrota.
+* Controla progressão global da campanha.
+* Rastreia bosses derrotados (defeated_bosses).
+* Define GAME_COMPLETE quando todos os 5 bosses forem derrotados.
+
+battle.py
+
+* Gerencia batalha entre dois personagens.
+* execute_player_action / choose_enemy_action / execute_enemy_action / is_over / get_winner.
 
 map.py
 
-* Define a estrutura de um mapa do jogo.
-* Cada mapa possui:
+* Stage: estrutura base de mapa.
+* Map: mapa baseado em tiles com câmera lerp e suporte a bg_image.
+* Reexporta todas as classes de tile de core/tiles/ para compatibilidade de imports.
 
-  * nome
-  * lista de inimigos
-  * boss
+map_manager.py
+
+* Carrega mapas sob demanda (cache), processa troca de mapa via portais.
+
+map_builder.py
+
+* build_themed_room: gera matriz 12×10 de sala de batalha.
+* make_room_tiles: combina dicts de tile globais + específicos da sala.
 
 elements.py
 
-* Sistema elemental do jogo.
-* Define vantagem entre elementos.
-* Calcula dano considerando elemento e fraqueza.
+* element_advantage: tabela de vantagens elementais.
+* ELEMENT_NAMES_PT: nomes PT-BR dos elementos.
+* ELEMENT_COLORS: cores canônicas por elemento (fonte única para menu e batalha).
+* calculate_damage: dano considerando elemento e fraqueza.
 
-Regras importantes:
+Subpasta: core/tiles/
+* Todas as classes de tile, organizadas por tema:
+  base.py          — Tile (classe raiz)
+  terrain.py       — GrassTile, WallTile, FlowerGrassTile, BushTile, TreeTile
+  water_tiles.py   — WaterTile, IceTile, CrystalTile, RiverTile...
+  fire_tiles.py    — FireTile, LavaTile, HotRockTile, EmberTile...
+  wind_tiles.py    — WindTile, CloudTile, SkyPathTile, FeatherTile...
+  electric_tiles.py — SandTile, MetalTile, CircuitFloorTile, NeonBorderTile...
+  shadow_tiles.py  — VoidFloorTile, ShadowCrystalTile, DarkMistTile
+  arena_tiles.py   — IceArenaTile, VolcanoFloorTile, SkyArenaTile, MetalArenaTile
+  path_tiles.py    — StoneRoadTile, WoodPathTile, WoodBridgeTile
+  portal.py        — PortalTile
+
+Regras:
 
 * Não colocar sprites ou imagens aqui.
 * Não colocar dados específicos de inimigos aqui.
@@ -117,78 +107,50 @@ Regras importantes:
 PASTA: meu_jogo/cenas/
 Responsável pelas telas do jogo.
 
-Cada arquivo nesta pasta representa uma cena ou tela.
-
-Exemplos de cenas:
-
-* menu
-* campo de treino
-* batalha
-* vitória
-* game over
-
 Arquivos principais:
 
-base_cenas.py
+menu_scene.py       — Tela inicial + seleção de elemento (MenuScene)
+campo_de_treino.py  — Overworld 2D top-down (CampoDeTreinoScene)
+battle_scene.py     — Tela de batalha por turnos (BattleScene)
+game_over_scene.py  — Tela de derrota (GameOverScene)
+victory_scene.py    — Tela de vitória final (VictoryScene)
 
-* Classe base para todas as cenas.
-* Define estrutura comum das cenas.
-
-campo_de_treino.py
-
-* Cena inicial do jogo.
-* Campo de treinamento com espantalho.
-* Usada para ensinar as mecânicas básicas.
-
-Subpastas:
-
-cenas/imagens/
-
-* Imagens usadas apenas pelas cenas.
-
-cenas/sons/
-
-* Sons usados apenas pelas cenas.
+Subpasta: cenas/battle/
+* Componentes visuais da batalha:
+  character_object.py — sprite + animações do personagem na batalha (CharacterObject)
+  projectile.py       — projétil animado com callback on_hit (Projectile)
+  constants.py        — reexporta ELEMENT_COLORS e _to_rgb
 
 Regras:
 
 * Cenas controlam o que aparece na tela.
 * Cenas podem usar objetos do core e entidades.
-* Cenas não devem implementar regras de dano ou XP.
+* Cenas não devem implementar regras de dano ou XP diretamente.
 
 ---
 
 PASTA: meu_jogo/entidades/
 Responsável pelos objetos do jogo.
 
-Aqui ficam os elementos que participam diretamente do jogo.
-
 Arquivos:
 
 character.py
 
-* Classe base de personagem/criatura.
-* Atributos:
-  nome
-  hp
-  dano
-  defesa
-  elemento
-  fraqueza
-  nível
-  xp
+* Classe base Character: hp, dano, defesa, elemento, fraqueza, nível, xp.
+* take_damage, gain_xp, level_up, is_alive.
 
 acoes.py
 
-* Define ações que personagens podem executar.
-* Exemplo:
-  AttackAction
+* Hierarquia de ações: Action → AttackAction, SpecialAttackAction, DefendAction, HealAction.
+* Cada ação tem execute(attacker, defender) → dict.
 
-ai.py
+ai_entidade.py
 
-* Define comportamento da inteligência artificial.
-* Exemplo:
-  BasicAI
+* BasicAI — IA simples para inimigos genéricos.
+
+smart_ai.py
+
+* SmartAI — IA dos bosses (escolha adaptativa de ação).
 
 Regras:
 
@@ -201,25 +163,18 @@ Regras:
 PASTA: meu_jogo/data/
 Responsável por dados do jogo.
 
-Aqui ficam definições prontas usadas pelo jogo.
-
 Arquivos:
 
 characters_data.py
 
-* Define inimigos e personagens.
-
-Exemplo:
-slime
-goblin
-wolf
-forest_guardian
+* Bosses do mundo aberto: hydra, thunder_beast, storm_eagle, magma_titan, shadow_lord.
+* ROOM_BOSS: mapeamento sala → boss.
+* reset_boss: utilitário para restaurar HP do boss.
 
 maps_data.py
 
-* Define mapas do jogo.
-* Define lista de inimigos de cada mapa.
-* Define boss do mapa.
+* Matrizes de tile para todos os mapas (MUNDO_ABERTO + 5 salas de batalha).
+* ALL_MAP_DATA: dict com dados de todos os mapas (consumido pelo MapManager).
 
 Regras:
 
@@ -231,41 +186,16 @@ Regras:
 PASTA: meu_jogo/midia/
 Responsável pelos arquivos de mídia do jogo.
 
-Sugestão de organização:
-
 midia/sprites/
+* sprite_factory.py    — pixel art programática (matrizes 16×16 + palette)
+* animated_sprite.py   — AnimatedSprite (frame-a-frame)
+* tile_sprites.py      — sprites de tiles (cache, get_tile_sprite)
 
-* sprites de personagens
-* sprites de cenário
-
-midia/sfx/
-
-* efeitos sonoros
-
-midia/music/
-
-* músicas
-
-midia/fonts/
-
-* fontes usadas no jogo
+midia/sfx/, midia/music/   — gerados em runtime pelo AudioManager
 
 Regras:
 
-* Não colocar código aqui.
-* Apenas arquivos de mídia.
-
----
-
-PASTA: meu_jogo/utils/
-Responsável por utilidades reutilizáveis.
-
-Exemplos:
-
-* funções matemáticas auxiliares
-* helpers de desenho
-* constantes de cores
-* ferramentas de debug
+* Não colocar lógica de jogo aqui.
 
 ---
 
@@ -274,33 +204,23 @@ Responsável por testes e protótipos.
 
 Arquivos aqui não fazem parte do jogo final.
 
-Exemplo:
-teste_movimentacao.py
-
-Objetivo:
-
-* testar mecânicas
-* testar movimentação
-* testar ideias rapidamente
-
 ---
 
 REGRAS GERAIS DO PROJETO
 
-1. main.py deve ser simples.
+1. main.py deve ser simples — apenas inicializa e inicia.
 2. core controla o funcionamento do jogo.
 3. cenas controlam telas e renderização.
-4. entidades representam personagens e objetos do jogo.
+4. entidades representam personagens e ações.
 5. data guarda definições prontas de inimigos e mapas.
 6. midia guarda sprites, sons e músicas.
-7. utils guarda funções auxiliares.
-8. testes guarda scripts de prototipagem.
+7. testes guarda scripts de prototipagem.
 
 Seguir esta estrutura ajuda a manter o projeto organizado e facilita o desenvolvimento em equipe.
 
 ---
 
-***Como Jogar:
+Como Jogar:
 
 1. rode o comando "pip install pygame" no terminal para instalar a biblioteca necessária.
 2. rode o comando "python -m meu_jogo.main" no terminal para rodar o jogo.

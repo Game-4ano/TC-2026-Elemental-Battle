@@ -59,3 +59,30 @@ class Character:
         self.hp       = self.max_hp
         if self.on_level_up:
             self.on_level_up(self)
+
+
+class Player(Character):
+    """Personagem controlado pelo jogador."""
+
+    def __init__(self, name, hp, damage, defense, element, weakness,
+                 sprite_key=None):
+        super().__init__(name, hp, damage, defense, element, weakness,
+                         is_boss=False, sprite_key=sprite_key)
+
+
+class Enemy(Character):
+    """Inimigo genérico controlado pela IA."""
+
+    def __init__(self, name, hp, damage, defense, element, weakness,
+                 is_boss=False, sprite_key=None):
+        super().__init__(name, hp, damage, defense, element, weakness,
+                         is_boss=is_boss, sprite_key=sprite_key)
+
+
+class Boss(Enemy):
+    """Boss — inimigo especial que sempre tem is_boss=True."""
+
+    def __init__(self, name, hp, damage, defense, element, weakness,
+                 sprite_key=None):
+        super().__init__(name, hp, damage, defense, element, weakness,
+                         is_boss=True, sprite_key=sprite_key)

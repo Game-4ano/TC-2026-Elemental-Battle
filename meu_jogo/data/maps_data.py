@@ -1,6 +1,6 @@
 import pygame
 from meu_jogo.core.map import (
-    GameMap, Tile, GrassTile, WaterTile, FireTile,
+    Tile, GrassTile, WaterTile, FireTile,
     WindTile, WallTile, PortalTile,
     # Água
     IceTile, CrystalTile, RiverTile, WetSandTile,
@@ -21,18 +21,11 @@ from meu_jogo.core.map import (
     IceStalactiteTile, BubbleTile, LavaDropTile, CircuitFloorTile, NeonBorderTile,
     # Sombra
     VoidFloorTile, ShadowCrystalTile, DarkMistTile,
+    # Decorações ambientais do mundo aberto
+    MushroomTile, BoneTile, BoltTile,
 )
-from meu_jogo.data.characters_data import (
-    slime, goblin, wolf, forest_guardian,
-    hydra, thunder_beast, storm_eagle, magma_titan,
-    ROOM_BOSS,
-)
+from meu_jogo.data.characters_data import ROOM_BOSS
 from meu_jogo.core.map_builder import build_themed_room, make_room_tiles
-
-# Compatibilidade com Game original
-map1 = GameMap("Floresta", enemies=[slime, goblin, wolf], boss=forest_guardian)
-maps = [map1]
-
 
 # -----------------------------------------------------------------------
 # Aliases curtos para a matriz
@@ -116,6 +109,9 @@ GLOBAL_TILE_TYPES = {
     "^": PortalTile("Portal Sombra",   (140,  50, 200), "SALA_BATALHA_SOMBRA",   1,  1),
     # Decorações ambientais do mundo aberto
     "q": ShadowCrystalTile(),   # cristal sombrio perto do portal sombra
+    "m": MushroomTile(),        # cogumelo perto da água (oeste)
+    "f": BoneTile(),            # osso carbonizado perto do fogo (leste)
+    "j": BoltTile(),            # parafuso metálico perto do elétrico (sul)
     " ": GrassTile(),
 }
 
@@ -150,8 +146,8 @@ MUNDO_ABERTO_MATRIX = [
   [X,  U,  U,  C,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  C,  U,  U,  X,  X,  X,  X,  X,  X,  X,  X,  X], # 7
 
 # CORREDOR Norte-Centro (lin 8-11)
-  [X,  G,  G,  C,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  C,  G,  G,  X,  X,  H,  H,  X,  X,  X,  X,  X], # 8
-  [X,  G,  G,  C,  G,  T,  G,  G,  G,  G,  T,  G,  G,  G,  G,  T,  G,  G,  G,  G,  T,  G,  G,  G,  G,  G,  G,  G,  C,  G,  G,  X,  H,  H,  H,  H,  X,  X,  X,  X], # 9
+  [X,  G, "m",  C,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  C,  G,  G,  X,  X,  H,  H,  X,  X,  X,  X,  X], # 8
+  [X,  G, "m",  C,  G,  T,  G,  G,  G,  G,  T,  G,  G,  G,  G,  T,  G,  G,  G,  G,  T,  G,  G,  G,  G,  G,  G,  G,  C,  G,  G,  X,  H,  H,  H, "f",  X,  X,  X,  X], # 9
   [X,  R,  R,  C,  G, "b", G,  G,  G, "b", G,  G, "b", G,  G,  G, "b", G,  G,  G,  G,  G, "b", G,  G,  G,  G,  G,  C,  G,  G,  H,  H,  Q,  Q,  H,  H,  X,  X,  X], # 10
   [X,  P,  P,  C,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  G,  C,  G,  G,  H,  Q,  Q,  Q,  Q,  H,  X,  X,  X], # 11
 
@@ -161,7 +157,7 @@ MUNDO_ABERTO_MATRIX = [
   [X, "A", P,  M,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  M,  g,  g,  H,  K,  L,  L,  K, "F", X,  X,  X], # 14 ← Portal Água/Fogo
   [X,  P,  R,  M,  g,  g, "b", g,  g, "b", g,  g, "b", g,  g,  g, "b", g,  g,  g,  g,  g, "b", g,  g,  g,  g,  g,  M,  g,  g,  H,  K,  L,  L,  K,  H,  X,  X,  X], # 15
   [X,  P,  P,  M,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  M,  g,  g,  H,  Q,  L,  L,  Q,  H,  X,  X,  X], # 16
-  [X,  P,  P,  M,  g,  T,  g,  g,  g,  g,  T,  g,  g,  g,  g,  T,  g,  g,  g,  g,  T,  g,  g,  g,  g,  g,  g,  g,  M,  g,  g,  H,  H,  Q,  Q,  H,  H,  X,  X,  X], # 17
+  [X,  P,  P,  M,  g,  T,  g,  g,  g,  g,  T,  g,  g,  g,  g,  T,  g,  g,  g,  g,  T,  g,  g,  g,  g,  g,  g,  g,  M,  g,  g,  H, "f",  Q,  Q,  H,  H,  X,  X,  X], # 17
   [X,  P,  P,  M,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  M,  g,  g,  X,  H,  H,  H,  H,  X,  X,  X,  X], # 18
 
 # CORREDOR Centro-Sul (lin 19-22)
@@ -172,10 +168,10 @@ MUNDO_ABERTO_MATRIX = [
 
 # REGIÃO SUL — Terra Trovejante (lin 23-29)
   [X,  I,  I,  C,  "d","d","d","d","d","d","d","d","d","d","d","d","d","d","d","d","e","d","d","d","d","d","d","d", C, "d","d", X,  X,  X,  X,  X,  X,  X,  X,  X], # 23
-  [X,  I,  I, "d","d","e","d","d","d","d","d","d","e","d","d","d","d","d","d","d","e","d","d","d","e","d","d","d","d","d","d", X,  X,  X,  X,  X,  X,  X,  X,  X], # 24
+  [X,  I,  I, "d","d","e","d","d","d","d","j","d","e","d","d","d","d","d","d","d","e","d","d","d","e","d","d","d","d","d","d", X,  X,  X,  X,  X,  X,  X,  X,  X], # 24
   [X,  Y,  I, "d","d","d","d","o","d","d","d","d","d","o","d","d","d","d","d","d","d","d","d","d","d","o","d","d","d","d","d", X,  X,  X,  X,  X,  X,  X,  X,  X], # 25
   [X,  I,  I, "d","e","d","d","d","d","d","d","d","e","d","d","d","d","d","d","d","E","d","d","d","d","d","d","d","e","d","d", X,  X,  X,  X,  X,  X,  X,  X,  X], # 26 ← Portal Elétrico col 20
-  [X,  I,  I, "d","d","d","d","d","d","d","d","d","d","d","d","d","d","d","d","d","e","d","d","d","d","d","d","d","d","d","d", X,  X,  X,  X,  X,  X,  X,  X,  X], # 27
+  [X,  I,  I, "d","d","d","d","d","d","d","d","d","d","d","d","d","d","d","j","d","e","d","d","d","d","d","d","d","d","d","d", X,  X,  X,  X,  X,  X,  X,  X,  X], # 27
   [X,  I,  I, "d","d","e","d","d","d","d","o","d","d","d","d","o","d","d","d","d","e","d","d","d","d","o","d","d","d","d","d", X,  X,  X,  X,  X,  X,  X,  X,  X], # 28
   [X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X], # 29
 ]

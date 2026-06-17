@@ -80,11 +80,3 @@ class Map(Stage):
                 if tile:
                     tile.draw(surface, x, y, ts,
                               self.camera_offset_x, self.camera_offset_y)
-
-
-class GameMap:
-    """Compatibilidade com a estrutura antiga."""
-    def __init__(self, name, enemies, boss):
-        self.name    = name
-        self.enemies = enemies
-        self.boss    = boss

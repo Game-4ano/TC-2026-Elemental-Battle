@@ -1,12 +1,13 @@
 import pygame
-from meu_jogo.entidades.character import Character
+from meu_jogo.entidades.character import Player
 from meu_jogo.core.game import Game
 from meu_jogo.core.game_manager import GameManager
 from meu_jogo.core.map_manager import MapManager
-from meu_jogo.data.maps_data import maps, ALL_MAP_DATA
+from meu_jogo.data.maps_data import ALL_MAP_DATA
 
 
 def main():
+    pygame.mixer.pre_init(44100, -16, 2, 512)
     pygame.init()
 
     try:
@@ -17,12 +18,12 @@ def main():
         except Exception:
             bg_image = None
 
-    player = Character(
+    player = Player(
         "Hero", 120, 20, 5, "Fire", "Water",
         sprite_key="hero",
     )
 
-    game        = Game(player, maps)
+    game        = Game(player)
     map_manager = MapManager("MUNDO_ABERTO", ALL_MAP_DATA, bg_image=bg_image)
     manager     = GameManager(game, map_manager, player)
 

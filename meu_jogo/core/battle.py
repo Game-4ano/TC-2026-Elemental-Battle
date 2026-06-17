@@ -24,6 +24,11 @@ class Battle:
     def execute_player_action(self, action):
         return action.execute(self.player, self.enemy)
 
-    def execute_enemy_turn(self):
-        action = self.enemy_ai.choose_action(self)
+    def choose_enemy_action(self):
+        return self.enemy_ai.choose_action(self)
+
+    def execute_enemy_action(self, action):
         return action.execute(self.enemy, self.player)
+
+    def execute_enemy_turn(self):
+        return self.execute_enemy_action(self.choose_enemy_action())

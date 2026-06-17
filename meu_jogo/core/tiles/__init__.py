@@ -12,17 +12,17 @@ from meu_jogo.core.tiles.terrain import (
 )
 from meu_jogo.core.tiles.water_tiles import (
     WaterTile, IceTile, CrystalTile, RiverTile, WetSandTile,
-    DeepWaterTile, IceStalactiteTile, BubbleTile,
+    DeepWaterTile, IceStalactiteTile, BubbleTile, MushroomTile,
 )
 from meu_jogo.core.tiles.fire_tiles import (
-    FireTile, LavaTile, HotRockTile, AshTile, EmberTile, LavaDropTile,
+    FireTile, LavaTile, HotRockTile, AshTile, EmberTile, LavaDropTile, BoneTile,
 )
 from meu_jogo.core.tiles.wind_tiles import (
     WindTile, CloudTile, SkyPathTile, WindyGrassTile, FeatherTile, SkyVoidTile,
 )
 from meu_jogo.core.tiles.electric_tiles import (
     SandTile, ChargedSandTile, MetalTile, LightningCrystalTile,
-    CircuitFloorTile, NeonBorderTile,
+    CircuitFloorTile, NeonBorderTile, BoltTile,
 )
 from meu_jogo.core.tiles.path_tiles import (
     StoneRoadTile, WoodPathTile, WoodBridgeTile,
@@ -39,12 +39,13 @@ __all__ = [
     "Tile",
     "GrassTile", "WallTile", "FlowerGrassTile", "BushTile", "TreeTile",
     "WaterTile", "IceTile", "CrystalTile", "RiverTile", "WetSandTile",
-    "DeepWaterTile", "IceStalactiteTile", "BubbleTile",
+    "DeepWaterTile", "IceStalactiteTile", "BubbleTile", "MushroomTile",
     "FireTile", "LavaTile", "HotRockTile", "AshTile", "EmberTile", "LavaDropTile",
+    "BoneTile",
     "WindTile", "CloudTile", "SkyPathTile", "WindyGrassTile", "FeatherTile",
     "SkyVoidTile",
     "SandTile", "ChargedSandTile", "MetalTile", "LightningCrystalTile",
-    "CircuitFloorTile", "NeonBorderTile",
+    "CircuitFloorTile", "NeonBorderTile", "BoltTile",
     "StoneRoadTile", "WoodPathTile", "WoodBridgeTile",
     "IceArenaTile", "VolcanoFloorTile", "SkyArenaTile", "MetalArenaTile",
     "VoidFloorTile", "ShadowCrystalTile", "DarkMistTile",

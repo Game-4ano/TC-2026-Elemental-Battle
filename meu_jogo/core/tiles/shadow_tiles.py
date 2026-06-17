@@ -39,6 +39,14 @@ class ShadowCrystalTile(Tile):
                (cx2, rect.y + size - 2), (rect.x + 4, cy2 + 2)]
         pygame.draw.polygon(surface, (glow // 2, 0, glow), pts)
         pygame.draw.polygon(surface, (180, 100, 255), pts, 1)
+        # Olho que abre/fecha esporadicamente
+        eye_phase = abs(math.sin(t * 0.55 + x * 1.4 + y * 0.85))
+        if eye_phase > 0.78:
+            ea = int(220 * (eye_phase - 0.78) / 0.22)
+            es = pygame.Surface((10, 5), pygame.SRCALPHA)
+            pygame.draw.ellipse(es, (140, 0, 200, ea), (0, 0, 10, 5))
+            pygame.draw.circle(es, (255, 30, 255, ea), (5, 2), 2)
+            surface.blit(es, (rect.x + size // 2 - 5, rect.y + size // 2 - 2))
 
 
 class DarkMistTile(Tile):

@@ -52,8 +52,7 @@ class AudioManager:
     def __init__(self):
         self._mixer_ok = False
         try:
-            if not pygame.mixer.get_init():
-                pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=512)
+            pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=512)
             self._mixer_ok = True
         except pygame.error as exc:
             logger.warning("AudioManager: mixer não inicializado: %s", exc)

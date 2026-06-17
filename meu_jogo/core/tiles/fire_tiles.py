@@ -115,3 +115,20 @@ class LavaDropTile(Tile):
             pygame.draw.polygon(s, (cv, cv // 3, 0, 200), pts)
             surface.blit(s, (rect.x + dx2 - 3, rect.y + dy2 - 4))
         pygame.draw.rect(surface, (40, 8, 0), rect, 1)
+
+
+class BoneTile(Tile):
+    def __init__(self):
+        super().__init__("Osso Carbonizado", "Fire", (45, 35, 30), True, 0)
+
+    def draw(self, surface, x, y, size, offset_x=0, offset_y=0):
+        rect = pygame.Rect(x * size - offset_x, y * size - offset_y, size, size)
+        pygame.draw.rect(surface, (28, 18, 12), rect)
+        t = pygame.time.get_ticks() / 1000.0
+        glow = int(55 + 40 * abs(math.sin(t * 1.5 + x * 0.4 + y * 0.3)))
+        cx, cy = rect.centerx, rect.centery
+        bc = (glow, glow - 8, max(glow - 18, 0))
+        pygame.draw.rect(surface, bc, (cx - 8, cy - 2, 16, 4))
+        pygame.draw.circle(surface, bc, (cx - 7, cy), 3)
+        pygame.draw.circle(surface, bc, (cx + 7, cy), 3)
+        pygame.draw.rect(surface, (14, 8, 4), rect, 1)

@@ -105,3 +105,21 @@ class NeonBorderTile(Tile):
         pygame.draw.rect(surface, (0, gv, gv // 3),
                          rect.inflate(-6, -6), 2, border_radius=3)
         pygame.draw.rect(surface, (10, 10, 20), rect, 1)
+
+
+class BoltTile(Tile):
+    def __init__(self):
+        super().__init__("Parafuso Metálico", "Electric", (80, 80, 100), True, 0)
+
+    def draw(self, surface, x, y, size, offset_x=0, offset_y=0):
+        rect = pygame.Rect(x * size - offset_x, y * size - offset_y, size, size)
+        pygame.draw.rect(surface, (38, 38, 52), rect)
+        t = pygame.time.get_ticks() / 1000.0
+        glow = int(90 + 80 * abs(math.sin(t * 2.2 + x * 0.5 + y * 0.4)))
+        cx, cy = rect.centerx, rect.centery
+        pts = [(cx + int(6 * math.cos(i * math.pi / 3)),
+                cy + int(6 * math.sin(i * math.pi / 3))) for i in range(6)]
+        pygame.draw.polygon(surface, (glow, glow, glow + 20), pts)
+        pygame.draw.polygon(surface, (200, 200, 255), pts, 1)
+        pygame.draw.circle(surface, (glow // 2, glow // 2, glow), (cx, cy), 2)
+        pygame.draw.rect(surface, (20, 20, 34), rect, 1)

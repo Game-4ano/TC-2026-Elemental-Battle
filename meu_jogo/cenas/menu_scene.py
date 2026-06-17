@@ -91,7 +91,7 @@ VANTAGENS = list(element_advantage.items())
 #  Helpers de desenho
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _draw_symbol(surface, elem, cx, cy, raio, hover=False):
+def _draw_symbol(surface, elem, cx, cy, raio, hover=False, t=0.0):
     cor       = elem["cor"]
     cor_clara = elem["cor_clara"]
 
@@ -103,11 +103,50 @@ def _draw_symbol(surface, elem, cx, cy, raio, hover=False):
         pygame.draw.circle(surface, cor_clara, (cx, cy), raio + 5, 3)
 
     pygame.draw.circle(surface, cor, (cx, cy), raio)
-    # Brilho interno
     pygame.draw.circle(surface, cor_clara,
                        (cx - raio // 4, cy - raio // 4), raio // 3)
-    # Borda branca
     pygame.draw.circle(surface, (255, 255, 255), (cx, cy), raio, 2)
+
+    # Animações elementais específicas por tipo
+    key = elem["key"]
+    if key == "Fire":
+        for i in range(3):
+            phase = (t * 2.2 + i * 0.7) % 1.0
+            px = cx + (i - 1) * 6
+            py = cy - raio - int(phase * 16)
+            a  = int(210 * (1.0 - phase))
+            if a > 0:
+                fs = pygame.Surface((5, 5), pygame.SRCALPHA)
+                pygame.draw.circle(fs, (255, 150 + int(80 * phase), 20, a), (2, 2), 2)
+                surface.blit(fs, (px - 2, py - 2))
+    elif key == "Water":
+        rr = raio + int(12 * ((t * 0.9) % 1.0))
+        a  = int(130 * (1.0 - ((t * 0.9) % 1.0)))
+        if a > 0:
+            ws = pygame.Surface((rr * 2 + 4, rr * 2 + 4), pygame.SRCALPHA)
+            pygame.draw.circle(ws, (90, 180, 255, a), (rr + 2, rr + 2), rr, 2)
+            surface.blit(ws, (cx - rr - 2, cy - rr - 2))
+    elif key == "Electric":
+        for i in range(2):
+            if math.sin(t * 7.0 + i * 2.1) > 0.4:
+                ang = t * 3.5 + i * math.pi
+                lx1 = cx + int(math.cos(ang) * (raio - 8))
+                ly1 = cy + int(math.sin(ang) * (raio - 8))
+                lx2 = lx1 + int(math.cos(ang + 0.9) * 11)
+                ly2 = ly1 + int(math.sin(ang + 0.9) * 11)
+                pygame.draw.line(surface, (255, 255, 100), (lx1, ly1), (lx2, ly2), 2)
+    elif key == "Grass":
+        for i in range(3):
+            ang = t * 1.6 + i * math.tau / 3
+            ox  = cx + int(math.cos(ang) * (raio + 9))
+            oy  = cy + int(math.sin(ang) * (raio + 9))
+            pygame.draw.circle(surface, (90, 245, 90), (ox, oy), 3)
+    elif key == "Dark":
+        for i in range(2):
+            ang = -t * 1.9 + i * math.pi
+            ox  = cx + int(math.cos(ang) * (raio + 7))
+            oy  = cy + int(math.sin(ang) * (raio + 7))
+            pygame.draw.circle(surface, (185, 75, 255), (ox, oy), 2)
 
     # Nome centralizado no círculo
     fonte = pygame.font.SysFont(None, 19)
@@ -387,6 +426,20 @@ class MenuScene(GameScene):
             screen.blit(ch_s, (x_cur,     ty))
             x_cur += ch_s.get_width()
 
+        # Lens flare passando pelo título (ciclo de ~4.5 s)
+        t_now = pygame.time.get_ticks() / 1000.0
+        flare_prog = (t_now * 0.22) % 1.0
+        if flare_prog < 0.55:
+            fp = flare_prog / 0.55
+            title_x0  = SCREEN_WIDTH // 2 - total_w // 2
+            flare_cx  = title_x0 + int(fp * (total_w + 30)) - 15
+            flare_cy  = ty + self._f_titulo.get_height() // 2
+            fa = int(175 * math.sin(fp * math.pi))
+            if fa > 0:
+                fl = pygame.Surface((36, 14), pygame.SRCALPHA)
+                pygame.draw.ellipse(fl, (255, 255, 255, fa), (0, 0, 36, 14))
+                screen.blit(fl, (flare_cx - 18, flare_cy - 7))
+
         # Linha decorativa
         lw = 240
         lx = SCREEN_WIDTH // 2 - lw // 2
@@ -470,11 +523,12 @@ class MenuScene(GameScene):
             screen.blit(bg, (mx - lbl.get_width() // 2 - 2, my - lbl.get_height() // 2 - 1))
             screen.blit(lbl, (mx - lbl.get_width() // 2, my - lbl.get_height() // 2))
 
-        # Círculos dos elementos (hover dinâmico)
+        # Círculos dos elementos (hover dinâmico + animações elementais)
+        t_sel = pygame.time.get_ticks() / 1000.0
         for i, elem in enumerate(ELEMENTOS):
             cx, cy = self._elem_pos[i]
             _draw_symbol(screen, elem, cx, cy, raio=38,
-                         hover=(i == self._hover_idx))
+                         hover=(i == self._hover_idx), t=t_sel)
 
         # Tecla de seleção abaixo de cada círculo
         for i, elem in enumerate(ELEMENTOS):

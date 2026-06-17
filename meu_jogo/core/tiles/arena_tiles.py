@@ -17,6 +17,13 @@ class IceArenaTile(Tile):
         t = pygame.time.get_ticks() / 1000.0
         alpha = int(30 + 20 * math.sin(t * 1.5 + x * 0.6 + y * 0.4))
         pygame.draw.rect(surface, (200, 240, 255), rect.inflate(-alpha // 3, -alpha // 3), 1)
+        # Reflexo deslizante azul-claro
+        phase = (t * 0.4 + x * 0.12 + y * 0.07) % 1.0
+        if phase < 0.3:
+            a = int(70 * (1.0 - phase / 0.3))
+            rs = pygame.Surface((size, 2), pygame.SRCALPHA)
+            rs.fill((200, 235, 255, a))
+            surface.blit(rs, (rect.x, rect.y + int(phase / 0.3 * size)))
         pygame.draw.rect(surface, (100, 170, 210), rect, 1)
 
 
@@ -33,6 +40,11 @@ class VolcanoFloorTile(Tile):
             cy2 = rect.y + (i * 6 + y * 4) % (size - 4) + 2
             glow = int(80 + 80 * abs(math.sin(t * 2.0 + i + x * 0.3)))
             pygame.draw.line(surface, (glow, glow // 3, 0), (cx2, cy2), (cx2 + 5, cy2 + 3), 1)
+        # Overlay de calor pulsante laranja
+        heat = int(22 + 20 * abs(math.sin(t * 1.8 + x * 0.2 + y * 0.3)))
+        hs = pygame.Surface((size, size), pygame.SRCALPHA)
+        hs.fill((210, 80, 0, heat))
+        surface.blit(hs, rect.topleft)
         pygame.draw.rect(surface, (20, 10, 5), rect, 1)
 
 
@@ -46,6 +58,13 @@ class SkyArenaTile(Tile):
         t = pygame.time.get_ticks() / 1000.0
         glow = int(200 + 55 * abs(math.sin(t * 0.8 + x * 0.4)))
         pygame.draw.rect(surface, (glow, glow, 255), rect.inflate(-6, -6), 2)
+        # Névoa de nuvem passando horizontalmente
+        wisp_phase = (t * 0.5 + x * 0.18 + y * 0.09) % 1.0
+        if wisp_phase < 0.35:
+            wa = int(30 * (1.0 - wisp_phase / 0.35))
+            ws = pygame.Surface((size, 3), pygame.SRCALPHA)
+            ws.fill((245, 248, 255, wa))
+            surface.blit(ws, (rect.x, rect.y + size // 3))
         pygame.draw.rect(surface, (140, 170, 210), rect, 1)
 
 
@@ -63,4 +82,11 @@ class MetalArenaTile(Tile):
         hs = size // 4
         pts = [(cx2, cy2 - hs), (cx2 + hs, cy2), (cx2, cy2 + hs), (cx2 - hs, cy2)]
         pygame.draw.polygon(surface, (150, 160, 180), pts, 1)
+        # Raio horizontal: todos os tiles do mesmo y piscam juntos (~a cada 3.5s)
+        active_row = int(t / 3.5) % 8 + 1
+        in_flash   = (t % 3.5) < 0.08
+        if y == active_row and in_flash:
+            fs = pygame.Surface((size, 2), pygame.SRCALPHA)
+            fs.fill((220, 235, 255, 200))
+            surface.blit(fs, (rect.x, rect.centery - 1))
         pygame.draw.rect(surface, (80, 90, 110), rect, 1)

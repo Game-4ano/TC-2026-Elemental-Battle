@@ -143,3 +143,24 @@ class BubbleTile(Tile):
             pygame.draw.circle(s, (200, 240, 255, alpha2 // 2), (r, r), r, 1)
             surface.blit(s, (bx2 - r, by2 - r))
         pygame.draw.rect(surface, (10, 40, 120), rect, 1)
+
+
+class MushroomTile(Tile):
+    def __init__(self):
+        super().__init__("Cogumelo", "Water", (30, 80, 30), True, 0)
+
+    def draw(self, surface, x, y, size, offset_x=0, offset_y=0):
+        rect = pygame.Rect(x * size - offset_x, y * size - offset_y, size, size)
+        pygame.draw.rect(surface, (30, 75, 30), rect)
+        t = pygame.time.get_ticks() / 1000.0
+        cx, cy = rect.centerx, rect.centery
+        # Talo
+        pygame.draw.rect(surface, (210, 190, 170), (cx - 2, cy, 4, size // 3))
+        # Cabeça animada (oscila levemente e pulsa de cor)
+        sway = int(1.5 * math.sin(t * 1.2 + x * 0.7))
+        cap_r = int(185 + 50 * abs(math.sin(t * 0.9 + x * 0.5)))
+        pygame.draw.ellipse(surface, (cap_r, 40, 40),
+                            (cx - 6 + sway, cy - size // 4, 12, 8))
+        pygame.draw.ellipse(surface, (255, 120, 100),
+                            (cx - 6 + sway, cy - size // 4, 12, 8), 1)
+        pygame.draw.rect(surface, (20, 55, 20), rect, 1)
