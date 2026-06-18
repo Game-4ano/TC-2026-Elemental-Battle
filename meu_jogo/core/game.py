@@ -6,6 +6,7 @@ from meu_jogo.core.battle import Battle
 from meu_jogo.entidades.ai_entidade import BasicAI
 from meu_jogo.core.game_state import GameState
 from meu_jogo.core.config import DEFAULT_XP_REWARD, BOSS_XP_REWARD
+from meu_jogo.data.characters_data import ROOM_BOSS
 
 
 class Game:
@@ -17,6 +18,10 @@ class Game:
         self.current_map_index = 0
         self.current_enemy_index = 0
         self.state = GameState.TRAINING
+
+        # Bosses derrotados (por nome). Vitória final só quando todos caírem.
+        self.defeated_bosses: set[str] = set()
+        self.total_bosses = len(ROOM_BOSS)
 
     def start_game(self):
         self.state = GameState.BATTLE
@@ -35,7 +40,10 @@ class Game:
 
     def handle_victory(self, enemy):
         if enemy.is_boss:
-            self._complete_map()
+            self.player.gain_xp(BOSS_XP_REWARD)
+            self.defeated_bosses.add(enemy.name)
+            if len(self.defeated_bosses) >= self.total_bosses:
+                self.state = GameState.GAME_COMPLETE
         else:
             self.player.gain_xp(DEFAULT_XP_REWARD)
 

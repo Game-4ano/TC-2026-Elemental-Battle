@@ -52,8 +52,10 @@ class CampoDeTreinoScene(GameScene):
         self.font     = pygame.font.SysFont(None, 22)
         self.font_big = pygame.font.SysFont(None, 28)
 
-        self.player_grid_x = 14
-        self.player_grid_y = 14
+        p = self.manager.player
+        self.player_grid_x = getattr(p, "grid_x", 20)
+        self.player_grid_y = getattr(p, "grid_y", 25)
+        self._map_name     = self.manager.map_manager.current_map_name
 
         self._facing_left   = False
         self._move_cooldown = 0.18
@@ -85,6 +87,7 @@ class CampoDeTreinoScene(GameScene):
         if not cmap.is_walkable(nx, ny):
             return
         self.player_grid_x, self.player_grid_y = nx, ny
+        self.manager.player.grid_x, self.manager.player.grid_y = nx, ny
         self.manager.audio.play_sfx("step", volume=0.35)
         tile = cmap.get_tile_at(nx, ny)
         if isinstance(tile, PortalTile):
@@ -123,6 +126,18 @@ class CampoDeTreinoScene(GameScene):
         return _REGION_LOOKUP.get((self.player_grid_x, self.player_grid_y))
 
     def update(self, dt: float):
+        # Detecta troca de mapa (overworld <-> arena) e re-sincroniza a posição
+        mm = self.manager.map_manager
+        if mm.current_map_name != self._map_name:
+            self._map_name = mm.current_map_name
+            p = self.manager.player
+            self.player_grid_x = getattr(p, "grid_x", self.player_grid_x)
+            self.player_grid_y = getattr(p, "grid_y", self.player_grid_y)
+            self._current_region = None
+            cx = self.player_grid_x * TILE_SIZE + TILE_SIZE // 2
+            cy = self.player_grid_y * TILE_SIZE + TILE_SIZE // 2
+            mm.current_map.update_camera(cx, cy, dt=1.0)   # snap imediato
+
         keys = pygame.key.get_pressed()
         dx, dy, moving = 0, 0, False
 

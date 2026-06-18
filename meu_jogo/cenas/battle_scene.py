@@ -10,8 +10,16 @@ from meu_jogo.core.elements import element_advantage
 from meu_jogo.entidades.acoes import (
     Action, AttackAction, SpecialAttackAction, DefendAction, HealAction
 )
-from meu_jogo.midia.sprites.sprite_factory import get_sprite, get_animation
+from meu_jogo.midia.sprites.sprite_factory import get_sprite, get_animation, get_scene_image
 from meu_jogo.midia.sprites.animated_sprite import AnimatedSprite, AnimationController
+
+# Fundos de batalha por elemento do inimigo (PNG real; senao usa procedural)
+_BATTLE_BG_FILES = {
+    "Water": "batalhaagua.png",
+    "Fire":  "batalhafogo.png",
+    "Grass": "batalhaterra.png",
+    "Dark":  "batalhabossfinal.png",
+}
 
 ELEMENT_COLORS = {
     "Fire":     (255, 110,  30),
@@ -784,6 +792,17 @@ class BattleScene(GameScene):
 
     def _draw_themed_background(self, surface: pygame.Surface):
         elem = self.battle.enemy.element
+
+        bg_file = _BATTLE_BG_FILES.get(elem)
+        if bg_file:
+            img = get_scene_image(bg_file, SCREEN_WIDTH, SCREEN_HEIGHT)
+            if img:
+                surface.blit(img, (0, 0))
+                veil = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+                veil.fill((0, 0, 0, 50))
+                surface.blit(veil, (0, 0))
+                return
+
         t    = pygame.time.get_ticks() / 1000.0
         w, h = SCREEN_WIDTH, SCREEN_HEIGHT
 
@@ -1093,6 +1112,8 @@ class BattleScene(GameScene):
         player = self.manager.game.player
         if not player.is_alive():
             player.hp = player.max_hp
+        # Volta ao overworld (não à arena de onde a batalha começou)
+        self.manager.map_manager.request_map_change("MUNDO_ABERTO", 20, 25)
         from meu_jogo.cenas.campo_de_treino import CampoDeTreinoScene
         self.manager.scene_manager.change_scene(
             CampoDeTreinoScene(self.manager))

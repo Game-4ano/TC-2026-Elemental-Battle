@@ -1,5 +1,6 @@
 import pygame
 from meu_jogo.core.config import TILE_SIZE, SCREEN_WIDTH, SCREEN_HEIGHT
+from meu_jogo.midia.sprites.sprite_factory import get_scene_image
 
 
 class Stage:
@@ -860,7 +861,8 @@ class PortalTile(Tile):
 # ---------------------------------------------------------------------------
 class Map(Stage):
     def __init__(self, name, tile_matrix, tile_types,
-                 tile_size=TILE_SIZE, bg_image: pygame.Surface | None = None):
+                 tile_size=TILE_SIZE, bg_image: pygame.Surface | None = None,
+                 world_image_file: str | None = None):
         super().__init__(name)
         self.matrix      = tile_matrix
         self.tile_types  = tile_types
@@ -870,6 +872,9 @@ class Map(Stage):
         self.camera_offset_x = 0.0
         self.camera_offset_y = 0.0
         self.bg_image    = bg_image   # pygame.Surface opcional
+        # Nome do PNG usado como mundo rolante (mapa/arena). Quando definido,
+        # a imagem cobre o mundo e só os portais são desenhados por cima.
+        self.world_image_file = world_image_file
 
     def get_tile_at(self, grid_x, grid_y):
         if 0 <= grid_y < self.height and 0 <= grid_x < self.width:
@@ -892,13 +897,6 @@ class Map(Stage):
         self.camera_offset_y += (target_y - self.camera_offset_y) * alpha
 
     def draw(self, surface: pygame.Surface):
-        if self.bg_image:
-            scaled = pygame.transform.scale(self.bg_image, (SCREEN_WIDTH, SCREEN_HEIGHT))
-            surface.blit(scaled, (0, 0))
-        else:
-            surface.fill((20, 20, 30))
-
-        # Renderizar só tiles visíveis na câmera
         ts  = self.tile_size
         ox  = int(self.camera_offset_x)
         oy  = int(self.camera_offset_y)
@@ -906,6 +904,29 @@ class Map(Stage):
         y0  = max(0, oy // ts)
         x1  = min(self.width,  x0 + SCREEN_WIDTH  // ts + 2)
         y1  = min(self.height, y0 + SCREEN_HEIGHT // ts + 2)
+
+        # Modo imagem-mundo: PNG cobre o mundo, só portais desenham por cima
+        if self.world_image_file:
+            world_w = self.width  * ts
+            world_h = self.height * ts
+            img = get_scene_image(self.world_image_file, world_w, world_h)
+            if img:
+                surface.blit(img, (-ox, -oy))
+            else:
+                surface.fill((20, 20, 30))
+            for y in range(y0, y1):
+                for x in range(x0, x1):
+                    tile = self.get_tile_at(x, y)
+                    if isinstance(tile, PortalTile):
+                        tile.draw(surface, x, y, ts,
+                                  self.camera_offset_x, self.camera_offset_y)
+            return
+
+        if self.bg_image:
+            scaled = pygame.transform.scale(self.bg_image, (SCREEN_WIDTH, SCREEN_HEIGHT))
+            surface.blit(scaled, (0, 0))
+        else:
+            surface.fill((20, 20, 30))
 
         for y in range(y0, y1):
             for x in range(x0, x1):
@@ -937,6 +958,7 @@ class MapManager:
             self.maps_cache[map_name] = Map(
                 map_name, data["matrix"], data["tile_types"],
                 bg_image=self.bg_image,
+                world_image_file=data.get("world_image"),
             )
         self.current_map      = self.maps_cache[map_name]
         self.current_map_name = map_name

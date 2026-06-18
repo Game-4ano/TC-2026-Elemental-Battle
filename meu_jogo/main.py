@@ -1,5 +1,5 @@
 import pygame
-from meu_jogo.entidades.character import Character
+from meu_jogo.data.characters_data import Character
 from meu_jogo.core.game import Game
 from meu_jogo.core.game_manager import GameManager
 from meu_jogo.core.map import MapManager
