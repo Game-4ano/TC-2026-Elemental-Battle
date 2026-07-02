@@ -104,26 +104,26 @@ class Character(Entity):
             self.on_level_up(self)
 
 
-slime = Character(
-    name="Slime",
-    hp=50, damage=10, defense=2, magic=0,
-    element="Grass", weakness="Fire",
-    sprite_key="slime",
-)
+# slime = Character(
+#     name="Slime",
+#     hp=50, damage=10, defense=2, magic=0,
+#     element="Grass", weakness="Fire",
+#     sprite_key="slime",
+# )
 
-goblin = Character(
-    name="Goblin",
-    hp=70, damage=12, defense=4, magic=5,
-    element="Grass", weakness="Fire",
-    sprite_key="goblin",
-)
+# goblin = Character(
+#     name="Goblin",
+#     hp=70, damage=12, defense=4, magic=5,
+#     element="Grass", weakness="Fire",
+#     sprite_key="goblin",
+# )
 
-wolf = Character(
-    name="Wolf",
-    hp=60, damage=15, defense=3, magic=0,
-    element="Grass", weakness="Fire",
-    sprite_key="wolf",
-)
+# wolf = Character(
+#     name="Wolf",
+#     hp=60, damage=15, defense=3, magic=0,
+#     element="Grass", weakness="Fire",
+#     sprite_key="wolf",
+# )
 
 forest_guardian = Character(
     name="Forest Guardian",
