@@ -4,7 +4,10 @@ import pygame
 
 from meu_jogo.core.game_scene import GameScene
 from meu_jogo.core.game_object import GameObject
-from meu_jogo.core.config import SCREEN_WIDTH, SCREEN_HEIGHT, WHITE, BLACK, GREEN, GRAY, RED
+from meu_jogo.core.config import (
+    SCREEN_WIDTH, SCREEN_HEIGHT, WHITE, BLACK, GREEN, GRAY, RED,
+    BATTLE_END_TIMEOUT, EXTRA_USES_EVERY, MAX_EXTRA_USES,
+)
 from meu_jogo.core.game_state import GameState
 from meu_jogo.core.elements import element_advantage
 from meu_jogo.entidades.acoes import (
@@ -357,6 +360,8 @@ class BattleScene(GameScene):
         self.objects: list[GameObject] = []
         self._last_summary: dict = {}
         self._death_started  = False
+        self._death_timer    = 0.0
+        self._ended          = False
         self._damage_texts:  list[dict] = []
         self._screen_shake   = 0.0   # timer
         self._shake_amount   = 0.0
@@ -374,10 +379,12 @@ class BattleScene(GameScene):
         # Menu de batalha
         self._menu_index = 0
 
-        # Instancias de acao do jogador (usos persistem durante a batalha)
-        self._special_action = SpecialAttackAction()
-        self._defend_action  = DefendAction()
-        self._heal_action    = HealAction()
+        # Instancias de acao do jogador (usos persistem durante a batalha).
+        # Nivel do heroi concede usos extras; o boss (SmartAI) usa os usos base.
+        bonus = min((self.battle.player.level - 1) // EXTRA_USES_EVERY, MAX_EXTRA_USES)
+        self._special_action = SpecialAttackAction(bonus_uses=bonus)
+        self._defend_action  = DefendAction(bonus_uses=bonus)
+        self._heal_action    = HealAction(bonus_uses=bonus)
 
         # Particulas ambientes de fundo (atmosfera elemental)
         self._ambient: list[dict] = []
@@ -672,15 +679,21 @@ class BattleScene(GameScene):
                 self._executar_turno_inimigo()
 
         # Animacao de morte antes de finalizar batalha
-        if self.battle.is_over() and not self.finished:
+        if self.battle.is_over() and not self.finished and not self._ended:
             if not self._death_started:
                 self._death_started = True
+                self._death_timer   = 0.0
                 winner = self.battle.get_winner()
                 if winner == self.manager.game.player:
                     self.enemy_obj.start_death_anim()
-            elif self.enemy_obj.death_anim_done or not (
-                    self.battle.get_winner() == self.manager.game.player):
-                self._handle_battle_end()
+            else:
+                self._death_timer += dt
+                player_won = self.battle.get_winner() == self.manager.game.player
+                # Finaliza quando a animacao termina, na derrota do jogador, ou
+                # por timeout de seguranca (nunca trava esperando a animacao).
+                if (self.enemy_obj.death_anim_done or not player_won
+                        or self._death_timer >= BATTLE_END_TIMEOUT):
+                    self._handle_battle_end()
 
     # -----------------------------------------------------------------------
     def draw(self, screen: pygame.Surface):
@@ -946,9 +959,9 @@ class BattleScene(GameScene):
 
         usos_info = [
             None,
-            (self._special_action.uses_left, SpecialAttackAction.MAX_USES),
-            (self._defend_action.uses_left,  DefendAction.MAX_USES),
-            (self._heal_action.uses_left,    HealAction.MAX_USES),
+            (self._special_action.uses_left, self._special_action.max_uses),
+            (self._defend_action.uses_left,  self._defend_action.max_uses),
+            (self._heal_action.uses_left,    self._heal_action.max_uses),
         ]
         _ICONS = ["Atq", "Esp", "Def", "Cur"]
 
@@ -1059,6 +1072,7 @@ class BattleScene(GameScene):
 
     # -----------------------------------------------------------------------
     def _handle_battle_end(self):
+        self._ended = True
         self.manager.audio.stop_music(fade_ms=800)
         winner = self.battle.get_winner()
         player = self.manager.game.player
