@@ -133,57 +133,22 @@ forest_guardian = Character(
     sprite_key="forest_guardian",
 )
 
-hydra = Character(
-    name="Hydra",
-    hp=100, damage=16, defense=4, magic=18,
-    element="Water", weakness="Electric",
-    is_boss=True,
-    sprite_key="tide_crawler",
-)
-
-thunder_beast = Character(
-    name="Thunder Beast",
-    hp=120, damage=20, defense=5, magic=25,
-    element="Electric", weakness="Grass",
-    is_boss=True,
-    sprite_key="storm_raven",
-)
-
-storm_eagle = Character(
-    name="Storm Eagle",
-    hp=130, damage=22, defense=6, magic=30,
-    element="Air", weakness="Electric",
-    is_boss=True,
-    sprite_key="storm_eagle",
-)
-
-magma_titan = Character(
-    name="Magma Titan",
-    hp=160, damage=28, defense=8, magic=22,
-    element="Fire", weakness="Water",
-    is_boss=True,
-    sprite_key="magma_titan",
-)
-
-shadow_lord = Character(
-    name="Shadow Lord",
-    hp=140, damage=24, defense=7, magic=35,
-    element="Dark", weakness="Electric",
-    is_boss=True,
-    sprite_key="void_emperor",
-)
-
-
-
-def reset_boss(boss: Character) -> Character:
-    boss.hp = float(boss.max_hp)
-    return boss
-
-
-ROOM_BOSS = {
-    "SALA_BATALHA_AGUA":     hydra,
-    "SALA_BATALHA_ELETRICA": thunder_beast,
-    "SALA_BATALHA_VENTO":    storm_eagle,
-    "SALA_BATALHA_FOGO":     magma_titan,
-    "SALA_BATALHA_SOMBRA":   shadow_lord,
+# ---------------------------------------------------------------------------
+# Especificacoes base dos bosses (dados puros). Bases normalizadas (~10% de
+# variacao) de proposito: a dificuldade NAO vem do elemento, e sim da ORDEM em
+# que o jogador enfrenta as salas. O escalonamento e aplicado em runtime por
+# core.progression.build_boss, que cria uma instancia nova a cada batalha
+# (nunca um singleton mutavel compartilhado).
+# ---------------------------------------------------------------------------
+BOSS_BASE = {
+    "SALA_BATALHA_AGUA":     dict(name="Hydra",         hp=90, damage=13, defense=4,
+                                  element="Water",    weakness="Electric", sprite_key="tide_crawler"),
+    "SALA_BATALHA_ELETRICA": dict(name="Thunder Beast", hp=90, damage=13, defense=4,
+                                  element="Electric", weakness="Grass",    sprite_key="storm_raven"),
+    "SALA_BATALHA_VENTO":    dict(name="Storm Eagle",   hp=93, damage=13, defense=4,
+                                  element="Air",      weakness="Electric", sprite_key="storm_eagle"),
+    "SALA_BATALHA_FOGO":     dict(name="Magma Titan",   hp=93, damage=13, defense=4,
+                                  element="Fire",     weakness="Water",    sprite_key="magma_titan"),
+    "SALA_BATALHA_SOMBRA":   dict(name="Shadow Lord",   hp=95, damage=14, defense=4,
+                                  element="Dark",     weakness="Electric", sprite_key="void_emperor"),
 }
