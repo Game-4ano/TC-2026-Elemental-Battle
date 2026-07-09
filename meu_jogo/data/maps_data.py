@@ -12,10 +12,10 @@ destino de um portal é uma chave de ROOM_BOSS (ver characters_data).
 """
 
 from meu_jogo.core.map import GameMap, Tile, WallTile, PortalTile
-from meu_jogo.data.characters_data import slime, goblin, wolf, forest_guardian
+from meu_jogo.data.characters_data import *
 
 # Compatibilidade com o fluxo antigo de Game
-map1 = GameMap("Floresta", enemies=[slime, goblin, wolf], boss=forest_guardian)
+map1 = GameMap("Floresta", enemies=[], boss=forest_guardian)
 maps = [map1]
 
 
