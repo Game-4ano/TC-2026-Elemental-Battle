@@ -3,8 +3,8 @@ Constantes globais do jogo.
 """
 
 # Configuração da janela
-SCREEN_WIDTH = 800
-SCREEN_HEIGHT = 500
+SCREEN_WIDTH = 1700
+SCREEN_HEIGHT = 1500
 FPS = 144
 TITLE = "Elemental Battle"
 
@@ -22,10 +22,27 @@ GRAY = (180, 180, 180)
 # Progressão
 XP_PER_LEVEL = 100
 
-HP_LEVEL_INCREMENT = 15
-DAMAGE_LEVEL_INCREMENT = 5
-DEFENSE_LEVEL_INCREMENT = 3
+HP_LEVEL_INCREMENT = 25
+DAMAGE_LEVEL_INCREMENT = 4
+DEFENSE_LEVEL_INCREMENT = 2
+
+# Usos extras das acoes limitadas conforme o heroi sobe de nivel.
+# bonus = min((nivel - 1) // EXTRA_USES_EVERY, MAX_EXTRA_USES)
+#   nivel 3 -> +1 uso;  nivel 5 -> +2 usos (teto)
+EXTRA_USES_EVERY = 2
+MAX_EXTRA_USES   = 2
 
 DEFAULT_XP_REWARD = 50
 BOSS_XP_REWARD = 120
 TILE_SIZE = 32
+
+# Escalonamento dos bosses por ordem de enfrentamento (core.progression).
+# stat = round(base * (1 + BOSS_GROWTH[stat] * (nivel_de_enfrentamento - 1)))
+# Ajustado na Fase 4 (balance_report.py) para: estagio 1 vencivel so no ataque
+# basico (>=50% HP final), estagios intermediarios exigem tatica (25-50%),
+# e o ultimo estagio pune quem so ataca (HP final negativo sem Curar/Defender).
+BOSS_GROWTH = {"hp": 0.60, "damage": 0.38, "defense": 0.20}
+
+# Tempo maximo (s) que a batalha espera pela animacao de morte antes de
+# forcar a transicao (Vitoria/GameOver). Rede de seguranca contra travamento.
+BATTLE_END_TIMEOUT = 2.0

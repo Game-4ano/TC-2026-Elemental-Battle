@@ -96,16 +96,17 @@ class CampoDeTreinoScene(GameScene):
             tile.on_step(self.manager.player, self.manager.map_manager)
 
     def _enter_portal(self, tile: PortalTile):
-        from meu_jogo.data.characters_data import ROOM_BOSS
+        from meu_jogo.data.characters_data import BOSS_BASE
+        from meu_jogo.core.progression import build_boss
         from meu_jogo.cenas.battle_scene import BattleScene
 
         self.manager.audio.play_sfx("portal")
         dest = tile.destination_map_name
 
-        if dest in ROOM_BOSS:
-            boss    = ROOM_BOSS[dest]
-            boss.hp = boss.max_hp
-            player  = self.manager.game.player
+        if dest in BOSS_BASE:
+            # Instancia nova escalada pela ordem de enfrentamento (nunca singleton).
+            boss   = build_boss(dest, self.manager.game.defeated_bosses)
+            player = self.manager.game.player
             if not player.is_alive():
                 player.hp = player.max_hp
 

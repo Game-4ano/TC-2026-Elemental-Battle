@@ -12,9 +12,9 @@ destino de um portal é uma chave de ROOM_BOSS (ver characters_data).
 """
 
 from meu_jogo.core.map import GameMap, Tile, WallTile, PortalTile
-from meu_jogo.data.characters_data import *
+from meu_jogo.data.characters_data import forest_guardian
 
-# Compatibilidade com o fluxo antigo de Game
+# Compatibilidade com o fluxo antigo de Game (overworld usa portais/ROOM_BOSS)
 map1 = GameMap("Floresta", enemies=[], boss=forest_guardian)
 maps = [map1]
 
