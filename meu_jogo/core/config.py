@@ -3,8 +3,8 @@ Constantes globais do jogo.
 """
 
 # Configuração da janela
-SCREEN_WIDTH = 800
-SCREEN_HEIGHT = 500
+SCREEN_WIDTH = 1700
+SCREEN_HEIGHT = 1500
 FPS = 144
 TITLE = "Elemental Battle"
 
