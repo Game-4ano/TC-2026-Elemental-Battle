@@ -20,6 +20,7 @@ _PNG_MAP = {
     "magma_titan":     "bossfogo.png",
     "forest_guardian": "bossterra.png",
     "storm_eagle":     "bossvento.png",
+    "storm_beast":     "bosseletrico.png",
     "void_emperor":    "ultimatebosstodososelementos.png",
     "slime":           "slimeterra.png",
     "slimeagua":       "slimeagua.png",
@@ -84,7 +85,8 @@ def _get_hero_sheet() -> pygame.Surface | None:
     path = _os.path.join(_SPRITES_DIR, _HERO_SHEET_FILE)
     if _os.path.isfile(path):
         try:
-            _hero_sheet_raw = pygame.image.load(path)
+            _hero_sheet_raw = pygame.image.load(path).convert()
+            _hero_sheet_raw.set_colorkey((255, 255, 255))
         except Exception:
             pass
     return _hero_sheet_raw
@@ -138,21 +140,13 @@ def _load_sheet_cell(row: int, col: int, target_size: int) -> pygame.Surface | N
             _sheet_cell_cache[cache_key] = None
             return None
         cell = sheet.subsurface(pygame.Rect(x, y, cell_w, cell_h)).copy()
-        cell_conv = cell.convert()
-        cell_conv.set_colorkey((255, 255, 255))
-        cell_alpha = cell_conv.convert_alpha()
-        bbox = cell_alpha.get_bounding_rect(min_alpha=10)
-        if bbox.width == 0 or bbox.height == 0:
+        cell = cell.convert()
+        cell.set_colorkey((255, 255, 255))
+        if cell.get_width() == 0 or cell.get_height() == 0:
             _sheet_cell_cache[cache_key] = None
             return None
-        cropped = cell_alpha.subsurface(bbox).copy()
-        ratio = min(target_size / cropped.get_width(),
-                    target_size / cropped.get_height())
-        new_w = max(1, int(cropped.get_width() * ratio))
-        new_h = max(1, int(cropped.get_height() * ratio))
-        scaled = pygame.transform.smoothscale(cropped, (new_w, new_h))
-        result = pygame.Surface((target_size, target_size), pygame.SRCALPHA)
-        result.blit(scaled, ((target_size - new_w) // 2, target_size - new_h))
+        result = pygame.transform.scale(cell, (target_size, target_size))
+        result.set_colorkey((255, 255, 255))
         _sheet_cell_cache[cache_key] = result
         return result
     except Exception:

@@ -1,48 +1,51 @@
+# main.py
 import pygame
-from meu_jogo.data.characters_data import Character
-from meu_jogo.core.game import Game
-from meu_jogo.core.game_manager import GameManager
-from meu_jogo.core.map import MapManager
-from meu_jogo.data.maps_data import maps, ALL_MAP_DATA
-
+import sys
+from .core.settings import LARGURA_TELA, ALTURA_TELA, FPS, PRETO
+from .core.assets_manager import AssetManager
+from .entidades.player import Player
 
 def main():
     pygame.init()
+    screen = pygame.display.set_mode((LARGURA_TELA, ALTURA_TELA))
+    pygame.display.set_caption("Meu RPG Pygame")
+    clock = pygame.time.Clock()
 
+    # 1. Carregar Assets
+    # ATENÇÃO: Garanta que as imagens existem nas pastas informadas antes de rodar!
     try:
-        bg_image = pygame.image.load("meu_jogo/mapa.jpg").convert()
-    except Exception:
-        try:
-            bg_image = pygame.image.load("mapa.jpg").convert()
-        except Exception:
-            bg_image = None
+        mapa_bg = AssetManager.load_background("meu_jogo/assets/background/mapa.png")
+        player_anims = AssetManager.load_player_spritesheet("meu_jogo/assets/sprites/spritepersonagem.png")
+    except FileNotFoundError as e:
+        print(f"Erro ao carregar imagem: {e}")
+        print("Crie imagens provisórias nas pastas corretas para testar.")
+        sys.exit()
 
-    player = Character(
-        "Hero", 120, 20, 5, "Fire", "Water",
-        sprite_key="hero",
-    )
+    # 2. Instanciar Entidades
+    player = Player(player_anims, LARGURA_TELA // 2, ALTURA_TELA // 2)
 
-    game        = Game(player, maps)
-    map_manager = MapManager("MUNDO_ABERTO", ALL_MAP_DATA, bg_image=bg_image)
-    manager     = GameManager(game, map_manager, player)
+    # 3. Game Loop
+    running = True
+    while running:
+        # Eventos
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
 
-    # Registra o callback de level up no herói.
-    # Quando player.level_up() for chamado, isso exibe a notificação na tela.
-    def _on_level_up(character):
-        manager.audio.play_sfx("level_up")
-        manager.notificacoes.adicionar(
-            f"★  {character.name} subiu para o nível {character.level}!  ★",
-            cor=(255, 220, 50),
-            duracao=3.0,
-            destaque=True,
-        )
+        # Atualizações lógicas
+        keys = pygame.key.get_pressed()
+        player.update(keys)
 
-    player.on_level_up = _on_level_up
+        # Renderização
+        screen.fill(PRETO)
+        screen.blit(mapa_bg, (0, 0)) # Desenha o mapa cobrindo a tela toda
+        player.draw(screen)          # Desenha o jogador por cima
 
-    manager.run()
+        pygame.display.flip()
+        clock.tick(FPS)
 
+    pygame.quit()
+    sys.exit()
 
 if __name__ == "__main__":
     main()
-
-    #dwadwadas

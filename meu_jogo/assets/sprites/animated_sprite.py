@@ -18,7 +18,7 @@ USO:
 """
 
 import pygame
-from meu_jogo.midia.sprites.sprite_factory import get_animation, get_sprite
+from meu_jogo.assets.sprites.sprite_factory import get_animation, get_sprite
 
 
 class AnimatedSprite:

@@ -144,7 +144,7 @@ BOSS_BASE = {
     "SALA_BATALHA_AGUA":     dict(name="Hydra",         hp=90, damage=13, defense=4,
                                   element="Water",    weakness="Electric", sprite_key="tide_crawler"),
     "SALA_BATALHA_ELETRICA": dict(name="Thunder Beast", hp=90, damage=13, defense=4,
-                                  element="Electric", weakness="Grass",    sprite_key="storm_raven"),
+                                  element="Electric", weakness="Grass",    sprite_key="storm_beast"),
     "SALA_BATALHA_VENTO":    dict(name="Storm Eagle",   hp=93, damage=13, defense=4,
                                   element="Air",      weakness="Electric", sprite_key="storm_eagle"),
     "SALA_BATALHA_FOGO":     dict(name="Magma Titan",   hp=93, damage=13, defense=4,

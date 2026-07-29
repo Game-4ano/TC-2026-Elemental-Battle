@@ -1,6 +1,6 @@
 import pygame
 from meu_jogo.core.config import TILE_SIZE, SCREEN_WIDTH, SCREEN_HEIGHT
-from meu_jogo.midia.sprites.sprite_factory import get_scene_image
+from meu_jogo.assets.sprites.sprite_factory import get_scene_image
 
 
 class Stage:
@@ -823,17 +823,28 @@ class PortalTile(Tile):
 
     def draw(self, surface, x, y, size, offset_x=0, offset_y=0):
         import math
-        rect = pygame.Rect(x * size - int(offset_x), y * size - int(offset_y), size, size)
+        if isinstance(size, (tuple, list)):
+            tile_w = float(size[0])
+            tile_h = float(size[1])
+        else:
+            tile_w = tile_h = float(size)
+        rect = pygame.Rect(
+            int(round(x * tile_w - offset_x)),
+            int(round(y * tile_h - offset_y)),
+            max(1, int(round(tile_w))),
+            max(1, int(round(tile_h))),
+        )
         dark = tuple(max(c - 60, 0) for c in self.color)
         pygame.draw.rect(surface, dark, rect)
 
         t  = pygame.time.get_ticks() / 1000.0
         cx, cy = rect.centerx, rect.centery
+        pulse_base = max(1, min(rect.w, rect.h) // 2)
 
         # Anéis pulsantes concêntricos
         for ring in range(3, 0, -1):
             phase = math.sin(t * 2.5 + ring * 0.9)
-            r = size // 2 - ring * 3 + int(phase * 2)
+            r = pulse_base - ring * 3 + int(phase * 2)
             if r > 1:
                 brightness = 60 + ring * 35
                 c_rgb = tuple(min(c + brightness, 255) for c in self.color)
@@ -843,14 +854,14 @@ class PortalTile(Tile):
         # 4 partículas rotacionando
         for i in range(4):
             angle = t * 2.5 + i * (math.pi / 2)
-            pr = size // 3
+            pr = max(2, pulse_base // 3)
             ppx = cx + int(math.cos(angle) * pr)
             ppy = cy + int(math.sin(angle) * pr)
             bright = tuple(min(c + 130, 255) for c in self.color)
             pygame.draw.circle(surface, bright, (ppx, ppy), 2)
 
         # Anel externo pulsante
-        outer_r = size // 2 - 1 + int(abs(math.sin(t * 2.0)) * 3)
+        outer_r = pulse_base - 1 + int(abs(math.sin(t * 2.0)) * 3)
         outer_c = tuple(min(c + 50, 255) for c in self.color)
         pygame.draw.circle(surface, outer_c, (cx, cy), outer_r, 1)
         pygame.draw.rect(surface, (210, 210, 210), rect, 1)
@@ -861,12 +872,16 @@ class PortalTile(Tile):
 # ---------------------------------------------------------------------------
 class Map(Stage):
     def __init__(self, name, tile_matrix, tile_types,
-                 tile_size=TILE_SIZE, bg_image: pygame.Surface | None = None,
+                 tile_size=TILE_SIZE, tile_width: float | None = None,
+                 tile_height: float | None = None,
+                 bg_image: pygame.Surface | None = None,
                  world_image_file: str | None = None):
         super().__init__(name)
         self.matrix      = tile_matrix
         self.tile_types  = tile_types
         self.tile_size   = tile_size
+        self.tile_width  = float(tile_width if tile_width is not None else tile_size)
+        self.tile_height = float(tile_height if tile_height is not None else tile_size)
         self.width       = len(tile_matrix[0]) if tile_matrix else 0
         self.height      = len(tile_matrix)
         self.camera_offset_x = 0.0
@@ -888,8 +903,8 @@ class Map(Stage):
     def update_camera(self, player_pixel_x, player_pixel_y, dt=0.016):
         target_x = float(player_pixel_x - SCREEN_WIDTH  // 2)
         target_y = float(player_pixel_y - SCREEN_HEIGHT // 2)
-        max_x = max(0.0, self.width  * self.tile_size - SCREEN_WIDTH)
-        max_y = max(0.0, self.height * self.tile_size - SCREEN_HEIGHT)
+        max_x = max(0.0, self.width  * self.tile_width - SCREEN_WIDTH)
+        max_y = max(0.0, self.height * self.tile_height - SCREEN_HEIGHT)
         target_x = max(0.0, min(target_x, max_x))
         target_y = max(0.0, min(target_y, max_y))
         alpha = min(1.0, 8.0 * dt)
@@ -898,17 +913,21 @@ class Map(Stage):
 
     def draw(self, surface: pygame.Surface):
         ts  = self.tile_size
+        tile_w = self.tile_width
+        tile_h = self.tile_height
         ox  = int(self.camera_offset_x)
         oy  = int(self.camera_offset_y)
-        x0  = max(0, ox // ts)
-        y0  = max(0, oy // ts)
-        x1  = min(self.width,  x0 + SCREEN_WIDTH  // ts + 2)
-        y1  = min(self.height, y0 + SCREEN_HEIGHT // ts + 2)
+        step_x = int(tile_w) if tile_w else ts
+        step_y = int(tile_h) if tile_h else ts
+        x0  = max(0, ox // max(1, step_x))
+        y0  = max(0, oy // max(1, step_y))
+        x1  = min(self.width,  x0 + SCREEN_WIDTH  // max(1, step_x) + 2)
+        y1  = min(self.height, y0 + SCREEN_HEIGHT // max(1, step_y) + 2)
 
         # Modo imagem-mundo: PNG cobre o mundo, só portais desenham por cima
         if self.world_image_file:
-            world_w = self.width  * ts
-            world_h = self.height * ts
+            world_w = max(1, int(round(self.width  * self.tile_width)))
+            world_h = max(1, int(round(self.height * self.tile_height)))
             img = get_scene_image(self.world_image_file, world_w, world_h)
             if img:
                 surface.blit(img, (-ox, -oy))
@@ -918,7 +937,7 @@ class Map(Stage):
                 for x in range(x0, x1):
                     tile = self.get_tile_at(x, y)
                     if isinstance(tile, PortalTile):
-                        tile.draw(surface, x, y, ts,
+                        tile.draw(surface, x, y, (self.tile_width, self.tile_height),
                                   self.camera_offset_x, self.camera_offset_y)
             return
 
@@ -955,8 +974,16 @@ class MapManager:
             data = self.all_map_data.get(map_name)
             if not data:
                 raise ValueError(f"Mapa '{map_name}' não encontrado.")
+            tile_width = data.get("tile_width")
+            tile_height = data.get("tile_height")
+            tile_size = data.get("tile_size", TILE_SIZE)
+            if tile_width is None and tile_height is None:
+                tile_width = tile_height = tile_size
             self.maps_cache[map_name] = Map(
                 map_name, data["matrix"], data["tile_types"],
+                tile_size=tile_size,
+                tile_width=tile_width,
+                tile_height=tile_height,
                 bg_image=self.bg_image,
                 world_image_file=data.get("world_image"),
             )
@@ -970,10 +997,12 @@ class MapManager:
         if self.pending_map_change:
             dest, sx, sy = self.pending_map_change
             self.load_map(dest)
+            tile_w = getattr(self.current_map, "tile_width", TILE_SIZE)
+            tile_h = getattr(self.current_map, "tile_height", TILE_SIZE)
             player.grid_x       = sx
             player.grid_y       = sy
-            player.pixel_x      = sx * TILE_SIZE
-            player.pixel_y      = sy * TILE_SIZE
+            player.pixel_x      = sx * tile_w
+            player.pixel_y      = sy * tile_h
             player.target_pixel_x = player.pixel_x
             player.target_pixel_y = player.pixel_y
             self.pending_map_change = None

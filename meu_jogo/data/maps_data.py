@@ -11,7 +11,8 @@ A batalha em si é uma cena sobreposta (BattleScene), disparada quando o
 destino de um portal é uma chave de ROOM_BOSS (ver characters_data).
 """
 
-from meu_jogo.core.map import GameMap, Tile, WallTile, PortalTile
+from meu_jogo.core.config import SCREEN_WIDTH, SCREEN_HEIGHT
+from meu_jogo.core.map_render import GameMap, Tile, WallTile, PortalTile
 from meu_jogo.data.characters_data import forest_guardian
 
 # Compatibilidade com o fluxo antigo de Game (overworld usa portais/ROOM_BOSS)
@@ -62,6 +63,8 @@ OVERWORLD_TILE_TYPES = {
 # -----------------------------------------------------------------------
 def _build_arena(world_image, boss_room_key, altar_color):
     cols, rows = 26, 16
+    tile_width = SCREEN_WIDTH / cols
+    tile_height = SCREEN_HEIGHT / rows
     m = [["X" if (r in (0, rows - 1) or c in (0, cols - 1)) else " "
           for c in range(cols)] for r in range(rows)]
     m[4][13]  = "Z"   # altar central → inicia a batalha
@@ -72,7 +75,13 @@ def _build_arena(world_image, boss_room_key, altar_color):
         "Z": PortalTile("Altar de Batalha", altar_color, boss_room_key, 0, 0),
         "O": PortalTile("Saída", (50, 210, 100), "MUNDO_ABERTO", _HUB_X, _HUB_Y),
     }
-    return {"matrix": m, "tile_types": tile_types, "world_image": world_image}
+    return {
+        "matrix": m,
+        "tile_types": tile_types,
+        "world_image": world_image,
+        "tile_width": tile_width,
+        "tile_height": tile_height,
+    }
 
 
 ARENA_AGUA     = _build_arena("areaagua.png",  "SALA_BATALHA_AGUA",     ( 40, 140, 255))

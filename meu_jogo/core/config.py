@@ -3,8 +3,8 @@ Constantes globais do jogo.
 """
 
 # Configuração da janela
-SCREEN_WIDTH = 1700
-SCREEN_HEIGHT = 1500
+SCREEN_WIDTH = 1920
+SCREEN_HEIGHT = 1080
 FPS = 144
 TITLE = "Elemental Battle"
 
@@ -26,9 +26,6 @@ HP_LEVEL_INCREMENT = 25
 DAMAGE_LEVEL_INCREMENT = 4
 DEFENSE_LEVEL_INCREMENT = 2
 
-# Usos extras das acoes limitadas conforme o heroi sobe de nivel.
-# bonus = min((nivel - 1) // EXTRA_USES_EVERY, MAX_EXTRA_USES)
-#   nivel 3 -> +1 uso;  nivel 5 -> +2 usos (teto)
 EXTRA_USES_EVERY = 2
 MAX_EXTRA_USES   = 2
 
