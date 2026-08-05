@@ -1,402 +1,323 @@
-# CLAUDE.md — Elemental Battle (TC-2026)
+# PROMPT — MOVIMENTO SUAVE DO HERÓI NO OVERWORLD (Elemental Battle)
 
-> **Este arquivo é a fonte única de verdade do projeto para o Claude Code.**
-> Leia-o por completo na primeira mensagem de cada sessão. **NUNCA** o ignore.
-> Atualize-o **somente** quando o usuário pedir explicitamente "atualize o CLAUDE.md".
-
----
-
-## 1. Contexto do projeto (não pesquisar de novo)
-
-- **Nome:** Elemental Battle
-- **Disciplina:** Tópicos em Computação — TC-2026
-- **Stack:** Python 3.10+, Pygame, (box2d-py opcional), stdlib. **NENHUMA outra dependência pode ser adicionada.**
-- **Resolução:** 800x500 (definida em `meu_jogo/core/config.py` — `SCREEN_WIDTH=800`, `SCREEN_HEIGHT=500`, `FPS=144`, `TILE_SIZE=32`).
-- **Execução:** `python -m meu_jogo.main`
-- **Estilo do jogo:** Pokémon-like — overworld 2D top-down + batalhas por turno contra 4 chefes elementais.
-- **Estado atual:** trimestre 2 finalizado. Sistemas que **JÁ FUNCIONAM** e **NÃO** devem ser tocados sem motivo:
-  - `AudioManager` (música/SFX gerados em runtime)
-  - `ScoreSystem` (combos, multiplicadores, highscore)
-  - `SaveSystem` (JSON)
-  - `SmartAI` (IA dos bosses)
-  - `NotificationSystem` (`manager.notificacoes.adicionar(...)`)
-  - Câmera com lerp em `Map.update_camera`
-  - Fluxo `MenuScene → CampoDeTreinoScene → BattleScene → GameOverScene/VictoryScene`
+Projeto: **TC-2026-ELEMENTAL-BATTLE** — Python + Pygame.
+Arquivo-alvo principal: `meu_jogo/cenas/campo_de_treino.py`.
+Arquivos secundários: `meu_jogo/core/config.py`, `meu_jogo/core/map.py`,
+`meu_jogo/midia/sprites/animated_sprite.py`.
 
 ---
 
-## 2. Princípios de operação do Claude Code (CUSTO)
+## PROBLEMA A RESOLVER
 
-> O usuário paga pelo Claude Code por token consumido. **Eficiência é parte da entrega.**
+Hoje o herói **teleporta de tile em tile**. Na `CampoDeTreinoScene.update()` existe:
 
-### 2.1. Antes de qualquer mudança
-1. **Sempre** liste primeiro **quais arquivos pretende ler** e **quais pretende modificar**, em uma única mensagem curta.
-2. Aguarde "ok" do usuário **se a tarefa for grande** (mais de 3 arquivos novos, ou refatoração estrutural). Para ajustes pequenos, prossiga direto.
-3. **NUNCA** leia o projeto inteiro. Use `grep`/`Glob` com termos específicos. Ex.: `grep -rn "ROOM_BOSS" meu_jogo/` em vez de abrir 10 arquivos "para entender".
-
-### 2.2. Leitura de arquivos
-- Leia **um arquivo por vez** e **somente as seções relevantes** (use `view` com `view_range` quando o arquivo passar de ~300 linhas).
-- **NUNCA** releia um arquivo na mesma sessão se já o leu — referencie pelo nome.
-- Se já leu `battle_scene.py` uma vez, não leia de novo na mesma tarefa.
-
-### 2.3. Edições
-- **Prefira `str_replace`** (edição cirúrgica) sobre reescrever o arquivo inteiro com `create_file`. Reescrever só é aceitável quando >70% do arquivo muda.
-- Faça **edições pequenas e verificáveis**, não blocos gigantes.
-- **NUNCA** adicione comentários óbvios estilo `# imprime na tela` — o código deve falar por si. Comentários só para o que **não** é óbvio (decisões de design, hacks, fórmulas matemáticas).
-
-### 2.4. Respostas ao usuário
-- Resposta padrão = **3 a 8 linhas**. Sem floreios, sem "Ótima pergunta!", sem repetir o que o usuário pediu.
-- **Não cole o código modificado de volta na resposta.** Diga "editei `arquivo.py:linhaX` — fiz Y" e pronto. O usuário lê o diff no editor.
-- Sem emojis. Sem markdown decorativo desnecessário.
-- **NUNCA** rode o jogo (`python -m meu_jogo.main`) para "testar" — o usuário roda. Você não tem display.
-- Se precisar testar lógica isolada (ex.: cálculo de dano), use `python -c "..."`.
-
-### 2.5. Stop conditions (pare de trabalhar imediatamente se):
-- O usuário disser "para", "stop", "chega", "espera".
-- Você for fazer a mesma edição pela 3ª vez (= está em loop, peça ajuda).
-- Você precisar adicionar uma dependência nova (= peça permissão antes).
-- Um arquivo passar de 800 linhas após sua edição (= peça para dividir em vez de inflar).
-
----
-
-## 3. Estrutura do projeto (decoreba — não precisa explorar)
-
-```
-meu_jogo/
-├── main.py                          # entrypoint, só chama GameManager
-├── core/
-│   ├── config.py                    # constantes (SCREEN_WIDTH=800, etc)
-│   ├── game_manager.py              # loop principal
-│   ├── scene_manager.py             # troca de cenas
-│   ├── game_scene.py                # base abstrata de cena
-│   ├── game_object.py               # base de entidade visual
-│   ├── game_state.py                # enum de estados
-│   ├── battle.py                    # turn loop
-│   ├── elements.py                  # tabela de vantagens
-│   ├── map.py                       # Tile, Map, MapManager, PortalTile
-│   ├── notificacao.py               # NotificationSystem
-│   ├── score_system.py              # pontuação
-│   ├── save_system.py               # highscore JSON
-│   └── audio_manager.py             # música/SFX
-├── cenas/
-│   ├── menu_scene.py                # tela inicial + escolha de elemento
-│   ├── campo_de_treino.py           # overworld
-│   ├── battle_scene.py              # tela de batalha (CharacterObject, Projectile, etc)
-│   ├── game_over_scene.py
-│   └── victory_scene.py
-├── entidades/
-│   ├── character.py                 # Character (hp, damage, etc) — take_damage AQUI
-│   ├── acoes.py                     # Action, AttackAction, SpecialAttackAction, DefendAction, HealAction
-│   ├── ai_entidade.py               # BasicAI
-│   └── smart_ai.py                  # SmartAI dos bosses
-├── data/
-│   ├── characters_data.py           # hydra, thunder_beast, storm_eagle, magma_titan, ROOM_BOSS
-│   └── maps_data.py                 # MUNDO_ABERTO_MATRIX, SALA_BATALHA_*_MATRIX, ALL_MAP_DATA
-├── midia/
-│   ├── sprites/
-│   │   ├── sprite_factory.py        # pixel art programática (matrizes 16x16 + palette)
-│   │   └── animated_sprite.py       # AnimatedSprite (frame-a-frame)
-│   ├── sfx/
-│   ├── music/
-│   └── gerar_audio_placeholder.py
-└── utils/
-```
-
-> Se um arquivo não está nessa árvore, ele provavelmente **não existe ainda** — não invente caminhos.
-
----
-
-## 4. Convenções obrigatórias (estilo)
-
-- **OO com herança/polimorfismo é REQUISITO da disciplina.** Toda nova entidade visual herda de `GameObject`. Toda nova cena herda de `GameScene`. Todo novo tile herda de `Tile`. Toda nova ação herda de `Action`.
-- **dt-based:** todo `update(self, dt)` recebe delta-time em segundos. Movimentos e timers usam `dt`, **nunca** contadores de frame.
-- **Sem novas libs.** Só `pygame`, `stdlib`, e `box2d-py` se já estiver lá.
-- **Pixel art programática:** novos sprites seguem o padrão de `sprite_factory.py` — matriz 16x16 de strings, dict `palette` com chaves de 1 caractere, `'.'` = transparente. Não invente outro formato.
-- **Animações cíclicas em tiles:** use `pygame.time.get_ticks()` para fase. Padrão:
-  ```python
-  phase = (pygame.time.get_ticks() % 1000) / 1000.0  # 0..1 a cada segundo
-  ```
-- **Cores nomeadas:** se a cor já existe em `config.py` (WHITE, BLACK, RED, etc.), use a constante.
-- **Nomes em PT-BR para o usuário** (mensagens, notificações), **EN para código** (classes, funções, variáveis). Mantenha o padrão atual do projeto.
-
----
-
-## 5. Bugs conhecidos a corrigir (PRIORIDADE)
-
-### BUG-01: HP fica negativo ao morrer
-**Onde:** `meu_jogo/entidades/character.py`, método `take_damage`.
-
-**Sintoma:** Após o golpe que mata, `character.hp` vira `-12`, `-30`, etc. O HUD mostra "−12/100 HP".
-
-**Correção esperada:**
 ```python
-def take_damage(self, amount):
-    if self.is_defending:
-        amount = amount // 2
-        self.is_defending = False
-    real_damage = max(amount - self.defense, 0)
-    self.hp = max(self.hp - real_damage, 0)   # <-- clamp em 0
-    return real_damage
+if moving:
+    self._move_timer -= dt
+    if self._move_timer <= 0:
+        self._try_move(dx, dy)          # muda player_grid_x/y de uma vez
+        self._move_timer = self._move_cooldown
+else:
+    self._move_timer = 0.0
 ```
 
-**Verificar também:**
-- `battle_scene.py` → `_hp_display` (interpolação visual da barra) também deve usar `max(..., 0)`. Já tem `max(self._hp_display, 0)` na ratio mas confirme que o display textual (`self.character.hp`) também não fica negativo.
-- Em `acoes.py → HealAction`, o `min(attacker.hp + heal, max_hp)` já é seguro — não mexer.
+Resultado visual: o sprite pula 32px de uma vez, a cada `_move_cooldown` segundos.
+Somando a isso, a animação de caminhada é **resetada** (`self._hero_anim.reset()`)
+sempre que o jogador solta/troca de tecla, e a câmera segue a posição **em grid**,
+o que amplifica o efeito de "salto".
+
+**Objetivo:** movimento contínuo em pixels (tween tile-a-tile), mantendo toda a
+lógica de grid que já existe (colisão via `is_walkable`, portais, `on_step`,
+regiões). O jogo continua sendo grid-based — só a *apresentação* passa a ser
+interpolada, no estilo Pokémon GBA.
 
 ---
 
-## 6. Roadmap completo das melhorias (ordem de execução)
+## REGRAS OBRIGATÓRIAS (não negociáveis)
 
-> Faça **uma fase por vez**. Ao terminar cada fase, escreva uma mensagem **curta** (≤5 linhas) listando o que mudou e qual o próximo passo, e **espere o "ok"** do usuário antes de seguir.
+1. **NÃO** adicionar dependências externas — apenas `pygame` + stdlib.
+2. **NÃO** quebrar sistemas existentes: `AudioManager`, `ScoreSystem`,
+   `SaveSystem`, `SmartAI`, `BattleScene`, `MapManager`.
+3. Manter OO com herança/polimorfismo (requisito da disciplina).
+4. Toda animação/movimento baseado em `dt` — nada de `pygame.time.wait` ou
+   contagem de frames.
+5. **Edições cirúrgicas com `str_replace`** — não reescrever arquivos inteiros.
+6. Comentários de código em **português**.
+7. Constantes de tuning vão para `core/config.py` — zero números mágicos
+   espalhados pela cena.
+8. **NÃO** mexer em lógica de dano, XP, níveis, pontuação ou fluxo de batalha.
+9. `player_grid_x` / `player_grid_y` continuam sendo a **fonte da verdade** da
+   posição lógica. A posição em pixels é derivada, nunca o contrário.
 
-### FASE 0 — Bugfix crítico
-- [ ] BUG-01 (HP negativo) — `character.py`. Teste mental: simular dano > hp restante e confirmar que o resultado fica em 0.
+---
 
-### FASE 1 — Elemento SOMBRA jogável (boss + sala)
-**Problema atual:** o jogador pode escolher Sombra no menu, mas não há boss de Sombra para enfrentar.
+## FASE 0 — AUDITORIA (SOMENTE LEITURA — GATE OBRIGATÓRIO)
 
-**Entregáveis:**
-1. Criar `shadow_lord` em `characters_data.py`:
+**Não edite nada nesta fase.** Leia e me reporte:
+
+1. `meu_jogo/cenas/campo_de_treino.py` completo — em especial:
+   - `__init__` (onde `player_grid_x/y`, `_move_timer`, `_move_cooldown`,
+     `_hero_anim`, `_facing_left` são criados)
+   - `update()`
+   - `_try_move()`
+   - `_enter_portal()`
+   - `render()` / `draw()` — onde exatamente o herói é blitado e com quais
+     coordenadas
+   - `_draw_hero_shadow()`
+   - `_draw_portal_indicators()`
+2. `Map.update_camera` em `meu_jogo/core/map.py` — assinatura atual e se já tem
+   lerp.
+3. `MapManager.process_map_change` / `request_map_change` — **como a cena
+   descobre que o mapa mudou** e quem escreve `player_grid_x/y` no spawn novo.
+4. `meu_jogo/core/config.py` — quais constantes já existem (`TILE_SIZE`, `FPS`,
+   `SCREEN_WIDTH/HEIGHT`).
+5. Liste **todos** os pontos do código que leem `player_grid_x` / `player_grid_y`
+   (grep no projeto inteiro). Isso é crítico: qualquer lugar que assuma que o
+   herói está sempre alinhado ao grid precisa ser revisado.
+
+**Entregue um relatório curto (máx. 40 linhas) e PARE. Aguarde meu "ok" para a
+Fase 1.**
+
+---
+
+## FASE 1 — CONSTANTES + MÁQUINA DE ESTADO DO MOVIMENTO
+
+### 1.1. `core/config.py`
+
+Adicionar (com comentários em português):
+
+```python
+# --- Movimento do herói no overworld ---
+HERO_MOVE_SPEED   = 110.0   # pixels por segundo (≈0.29s por tile de 32px)
+HERO_WALK_FPS     = 8.0     # fps da animação de caminhada
+HERO_BOB_AMPLITUDE = 1.5    # oscilação vertical sutil ao andar (px)
+```
+
+Não remover nem alterar constantes existentes.
+
+### 1.2. Novo estado em `CampoDeTreinoScene.__init__`
+
+Substituir `_move_timer` / `_move_cooldown` por um tween:
+
+```python
+# Posição visual em pixels (canto superior-esquerdo do tile atual)
+self._pixel_x = float(self.player_grid_x * TILE_SIZE)
+self._pixel_y = float(self.player_grid_y * TILE_SIZE)
+
+# Tween de movimento entre tiles
+self._is_moving   = False
+self._origin_x    = self._pixel_x   # pixel de onde saiu
+self._origin_y    = self._pixel_y
+self._target_gx   = self.player_grid_x   # tile de destino
+self._target_gy   = self.player_grid_y
+self._move_progress = 0.0   # 0.0 → 1.0
+self._move_duration = TILE_SIZE / HERO_MOVE_SPEED
+```
+
+### 1.3. Reescrever `update()` — máquina de estado de 2 fases
+
+Lógica exata:
+
+**A) Se `self._is_moving` é True → só avança o tween:**
+
+```python
+self._move_progress += dt / self._move_duration
+if self._move_progress >= 1.0:
+    self._move_progress = 1.0
+    self._finish_move()      # chega no tile: commit + on_step + portal
+```
+
+E a cada frame recalcula a posição interpolada:
+
+```python
+t = self._move_progress
+self._pixel_x = self._origin_x + (self._target_gx * TILE_SIZE - self._origin_x) * t
+self._pixel_y = self._origin_y + (self._target_gy * TILE_SIZE - self._origin_y) * t
+```
+
+Use **interpolação linear**, não easing. Easing em movimento tile-a-tile contínuo
+cria uma pulsação de velocidade que fica pior que o problema original.
+
+**B) Se `self._is_moving` é False → lê o input e tenta iniciar um novo passo:**
+
+Mantenha a leitura atual (`pygame.key.get_pressed()`, eixo único, sem diagonal,
+`elif` encadeado). Se houver direção, chame `self._start_move(dx, dy)`.
+
+### 1.4. Novos métodos
+
+```python
+def _start_move(self, dx: int, dy: int) -> bool:
+    """Inicia o deslizamento para o tile vizinho, se for caminhável."""
+```
+- Atualiza `_facing_left` / direção (para a animação).
+- `nx, ny = self.player_grid_x + dx, self.player_grid_y + dy`
+- Se `not cmap.is_walkable(nx, ny)`: **não inicia o tween**, mas ainda assim
+  atualiza a direção do sprite (o herói "encara" a parede). Retorna `False`.
+- Se caminhável: seta `_origin_x/_origin_y` com o pixel **atual**,
+  `_target_gx/_target_gy = nx, ny`, `_move_progress = 0.0`,
+  `_is_moving = True`, toca `self.manager.audio.play_sfx("step", volume=0.35)`.
+  Retorna `True`.
+
+```python
+def _finish_move(self):
+    """Chegou no tile de destino: efetiva o grid e dispara os efeitos."""
+```
+- `self.player_grid_x, self.player_grid_y = self._target_gx, self._target_gy`
+- `self._pixel_x = float(self.player_grid_x * TILE_SIZE)` (snap exato, mata
+  acúmulo de erro de float)
+- `self._is_moving = False`
+- Pega o tile e dispara, **nesta ordem**: `PortalTile → self._enter_portal(tile)`,
+  senão `tile.on_step(...)`.
+  **Isso é uma mudança de comportamento importante:** hoje o portal dispara no
+  instante do commit; agora dispara só na chegada, evitando entrar em batalha com
+  o sprite no meio do caminho.
+- **Encadeamento fluido:** logo depois, se ainda houver tecla de direção
+  pressionada, chame `_start_move` de novo **no mesmo frame**. Sem isso, o herói
+  dá uma micro-pausa a cada tile e o problema visual continua.
+
+```python
+def _sync_pixel_to_grid(self):
+    """Realinha a posição em pixels ao grid (usar após troca de mapa/spawn)."""
+```
+- Zera o tween e coloca `_pixel_x/_pixel_y` exatamente sobre `player_grid_x/y`.
+- **Chame isso sempre que `player_grid_x/y` for escrito de fora** (spawn ao
+  entrar/sair de sala, retorno da batalha). Use a auditoria da Fase 0 para achar
+  esses pontos. Se a cena é recriada a cada troca de mapa, basta o `__init__`
+  cobrir — mas **confirme comigo antes de assumir isso**.
+
+**PARE ao final da Fase 1 e me mostre o diff. Aguarde confirmação.**
+
+---
+
+## FASE 2 — RENDERIZAÇÃO NA POSIÇÃO INTERPOLADA
+
+### 2.1. Desenho do herói
+
+Onde hoje o herói é desenhado a partir de `player_grid_x * TILE_SIZE`, passar a
+usar `self._pixel_x / self._pixel_y`:
+
+```python
+sx = int(self._pixel_x - cmap.camera_offset_x)
+sy = int(self._pixel_y - cmap.camera_offset_y)
+```
+
+Use `int(...)` só no blit final — os cálculos internos permanecem em float.
+
+### 2.2. Câmera
+
+`update_camera` deve receber o **centro em pixels interpolado**, não o grid:
+
+```python
+px = self._pixel_x + TILE_SIZE // 2
+py = self._pixel_y + TILE_SIZE // 2
+self.manager.map_manager.current_map.update_camera(px, py, dt)
+```
+
+**Atenção ao double-smoothing:** com o herói já interpolado, um lerp de câmera
+muito lento gera sensação de atraso/borracha. Se `update_camera` já tem lerp,
+suba o fator para ~`12.0 * dt` (clampado em 1.0) ou deixe a câmera travada no
+alvo. Me mostre as duas opções e eu decido.
+
+### 2.3. Bob vertical e sombra
+
+Substituir o pulso da sombra baseado em `pygame.time.get_ticks()` por algo
+sincronizado com o passo real:
+
+```python
+# Oscilação vertical: 2 ciclos por tile (um por perna)
+bob = 0.0
+if self._is_moving:
+    bob = -abs(math.sin(self._move_progress * math.pi * 2)) * HERO_BOB_AMPLITUDE
+```
+
+- Aplicar `bob` no `sy` do sprite (não na sombra).
+- A sombra encolhe levemente quando `bob` está no pico (pé no ar) e volta ao
+  tamanho normal no contato. Mantenha sutil — 2–3px de variação, no máximo.
+
+### 2.4. Indicador de portal
+
+`_draw_portal_indicators` usa `player_grid_x/y` para medir distância. Mantenha em
+grid (a lógica de proximidade não precisa de precisão sub-tile), mas confirme que
+durante o tween o indicador não pisca — se piscar, use o tile de destino
+(`_target_gx/_target_gy`) quando `_is_moving` for True.
+
+**PARE ao final da Fase 2 e me mostre o resultado. Aguarde confirmação.**
+
+---
+
+## FASE 3 — CONTINUIDADE DA ANIMAÇÃO
+
+Esta fase resolve a metade do problema que **não** é o teleporte.
+
+1. **Nunca chamar `reset()` enquanto o jogador estiver andando.** Hoje o
+   `else: self._hero_anim.reset()` zera o ciclo assim que há um frame sem input.
+   Nova regra:
+   - Se `_is_moving` **ou** há tecla de direção pressionada → `update(dt)`.
+   - Só chamar `reset()` quando o herói **parou de fato** (`not _is_moving` e sem
+     input), e mesmo assim voltando para o frame de idle, não para o frame 0 da
+     caminhada.
+2. **Trocar de direção não reinicia o ciclo.** Ir de esquerda para direita deve
+   apenas trocar `flipped` / a animação direcional, preservando `_index` e
+   `_timer` da animação atual. Se `AnimatedSprite` não permitir isso hoje,
+   adicione um método:
    ```python
-   shadow_lord = Character(
-       name="Shadow Lord",
-       hp=140, damage=24, defense=7,
-       element="Dark", weakness="Electric",  # já consistente com VANTAGENS do menu
-       is_boss=True,
-       sprite_key="void_emperor",  # já existe em sprite_factory!
-   )
+   def copy_timing_from(self, other: "AnimatedSprite"):
+       """Herda índice e timer de outra animação (troca de direção sem reset)."""
    ```
-2. Adicionar em `ROOM_BOSS`:
-   ```python
-   "SALA_BATALHA_SOMBRA": shadow_lord,
-   ```
-3. Criar **portal de Sombra** no mundo aberto. Sugestão de posição: **clareira no canto NOROESTE** (linhas 2-5, colunas 2-5) — região atualmente sem portal. Símbolo da matriz: `"H"` já está em uso (HotRockTile), use `"^"` para o portal de Sombra.
-4. Em `maps_data.py`, adicionar:
-   ```python
-   "^": PortalTile("Portal Sombra", (140, 50, 200), "SALA_BATALHA_SOMBRA", 1, 1),
-   ```
-5. Criar a **sala temática** `SALA_BATALHA_SOMBRA_MATRIX` 12×10 com tiles novos:
-   - Novo tile `VoidFloorTile` (chão escuro com partículas roxas pulsando matematicamente)
-   - Novo tile `ShadowCrystalTile` (cristal roxo, não-caminhável)
-   - Novo tile `DarkMistTile` (névoa decorativa que pulsa em opacidade)
-   - Saída via `"O"` apontando de volta para a posição perto do portal de Sombra no mundo aberto.
-6. Adicionar `SALA_BATALHA_SOMBRA` em `ALL_MAP_DATA`.
-7. **Cor de fundo da batalha** em `ROOM_BG` (campo_de_treino.py): `(20, 5, 35)` — roxo muito escuro.
-8. Atualizar a tabela de elementos para que o jogador veja que "Sombra existe e tem boss" — isso é só visual no menu, sem mudar lógica.
+3. **Sincronizar o fps do passo com a velocidade real:** com 4 frames de
+   caminhada e `HERO_MOVE_SPEED = 110`, um ciclo completo deve durar ~2 tiles.
+   Calcule `fps = 4 / (2 * self._move_duration)` em vez de deixar `8.0` fixo, e
+   documente a fórmula em comentário.
+4. Se as animações direcionais (`hero_walk_back` / `hero_walk_front`) ainda não
+   existirem na `sprite_factory`, **não as crie agora** — apenas deixe o código
+   preparado com fallback para `hero_walk` + flip horizontal. Criar sprites novos
+   é escopo de outro prompt.
 
-### FASE 2 — Tela de batalha **redesenhada (PRIORIDADE MÁXIMA do usuário)**
-
-**Problema atual:** A `BattleScene` tem fundo simples (cor sólida ou imagem com overlay), arena = retângulo + linha divisória, HUD básico.
-
-**Entregáveis (TUDO em `cenas/battle_scene.py`, sem quebrar APIs):**
-
-#### 2.1. Fundo temático por elemento do boss
-Criar um método `_draw_themed_background(self, surface)` que desenha um fundo procedural baseado em `self.battle.enemy.element`:
-- **Water (Hydra):** gradiente azul-marinho → ciano, ondas senoidais animadas no fundo, bolhas subindo
-- **Fire (Magma Titan):** gradiente vermelho-escuro → laranja, brasas subindo, silhuetas de rochas no horizonte
-- **Air (Storm Eagle):** gradiente roxo-noturno → azul, nuvens passando, raios distantes
-- **Electric (Thunder Beast):** gradiente índigo → amarelo, grade de circuito ao fundo, pulsos elétricos
-- **Dark (Shadow Lord):** gradiente preto → roxo, partículas roxas flutuando, "olhos" piscando ao fundo
-- **Grass (Forest Guardian):** gradiente verde-escuro → verde-claro, folhas caindo
-
-#### 2.2. Plataformas de combate **estilizadas** (não retângulos)
-- Plataforma do jogador (esquerda) e do inimigo (direita) **com forma elíptica em perspectiva**, sombra projetada, borda iluminada na cor do elemento de quem está em cima.
-- Plataforma deve ter um **glow pulsante sutil** (alpha animado).
-
-#### 2.3. HUD **redesenhado** (caixa em estilo RPG retro)
-Substituir o painel preto reto por:
-- Painel com **bordas decorativas** (cantos arredondados + borda dupla na cor do elemento)
-- Barra de HP **gradiente** (verde→amarelo→vermelho conforme percentual)
-- **Mini-ícone elemental** ao lado do nome
-- Tag "BOSS" mais chamativa (com fundo dourado)
-- Painel **maior**: 180×64 px
-
-#### 2.4. Caixa de mensagem inferior estilo "diálogo Pokémon"
-Substituir a impressão simples da `self.message` por:
-- Caixa retangular na parte de baixo da tela (largura total – margens), altura ~70px
-- Borda dupla, fundo preto translúcido
-- Texto com **animação de digitação** (caracteres aparecendo em sequência, ~30 char/s)
-- Pequeno triângulo piscante "▼" no canto direito quando a mensagem termina
-
-#### 2.5. Menu de ações **redesenhado**
-O menu atual (4 botões "Atacar/Especial/Defender/Curar") deve virar:
-- **Grade 2×2** de botões grandes na metade inferior direita
-- Cada botão com **ícone**: ⚔️ (espada simples desenhada), ✨ (estrela), 🛡️ (escudo), 💚 (cruz médica)
-- **Hover/seleção** com glow elemental + pulso de escala (1.0 → 1.05)
-- **Contador de usos restantes** visível em Especial/Defender/Curar (ex: "Curar 2/2")
-
-#### 2.6. Indicador de turno
-Texto pequeno no centro-topo: **"SEU TURNO"** ou **"TURNO INIMIGO"**, com animação de fade in/out.
-
-#### 2.7. Vantagem elemental visual
-Quando o jogador seleciona uma ação, mostrar um pequeno indicador acima do menu:
-- **"Super Efetivo!"** (verde) se atacante tem vantagem
-- **"Pouco Efetivo..."** (cinza) se defensor é resistente
-- Nada se neutro
-
-#### 2.8. Animações de ataque mais ricas
-- O projétil já existe (`Projectile`). Adicione **partículas de rastro** mais densas com cores específicas do elemento (já parcialmente existe — incremente).
-- Quando bate, **screen shake escala com dano** (atualmente shake fixo). Fórmula: `shake = min(dano / 10.0, 8.0)`.
-- Adicionar **flash colorido** no defensor por 0.2s (cor do elemento atacante).
-
-#### 2.9. Animação de morte refinada
-A morte atual é fade-out. Adicionar:
-- 3-4 partículas elementais saindo do corpo
-- Som específico de derrota (use `play_sfx("defeat")` — se não existir o áudio, o AudioManager faz fallback silencioso, então é seguro)
-
-### FASE 3 — Mapa principal: salas de batalha **totalmente customizadas**
-
-> Já existem 4 salas (Água, Fogo, Vento, Elétrica) + a nova de Sombra (Fase 1). O usuário quer que **cada uma seja MUITO mais distinta visualmente**.
-
-**Para cada sala, melhorar:**
-
-#### 3.1. SALA_BATALHA_AGUA (Hydra) — "Caverna Submersa"
-- Layout em **forma de gota d'água** (não retangular padrão) usando paredes irregulares
-- Bolhas decorativas ANIMADAS na borda
-- Stalactites de gelo no topo (`IceStalactiteTile` novo, decorativo)
-- Reflexo no chão (overlay alpha azul que desliza)
-
-#### 3.2. SALA_BATALHA_FOGO (Magma Titan) — "Cratera Vulcânica"
-- Layout circular com lava transbordando nas bordas
-- **Pingos de lava** caindo do teto (partículas de cima para baixo)
-- Pequena **erupção** decorativa no canto
-- Overlay laranja pulsante de calor
-
-#### 3.3. SALA_BATALHA_VENTO (Storm Eagle) — "Arena nas Nuvens"
-- **Plataforma flutuante circular** no centro com vazio celeste ao redor
-- Nuvens passando atrás (procedural)
-- Penas caindo lentamente (já existe partícula, intensifique)
-- Pequenos relâmpagos distantes ao fundo
-
-#### 3.4. SALA_BATALHA_ELETRICA (Thunder Beast) — "Arena Eletro-Industrial"
-- Padrão de placa de circuito no chão (linhas verdes em padrão grid)
-- **Raios horizontais cruzando o cenário** esporadicamente (linha branca por 0.1s)
-- Tubos de neon nas bordas pulsando
-
-#### 3.5. SALA_BATALHA_SOMBRA (Shadow Lord) — "Vazio Sombrio" (NOVA)
-- Chão de cristal escuro com partículas roxas flutuando
-- "Olhos" desenhados nas paredes que abrem/fecham aleatoriamente
-- Névoa roxa pulsando em opacidade
-- Cristais roxos pontiagudos nos cantos
-
-**Implementação:** estender o sistema `_build_themed_room` em `maps_data.py`. Se necessário, criar `_build_circular_room`, `_build_drop_room`, etc. **Reaproveite o máximo** — não crie 5 funções inteiras se uma só + parâmetro resolve.
-
-### FASE 4 — Mapa principal (overworld): polimento
-
-#### 4.1. Tornar cada região visualmente mais distinta
-- Adicionar **decorações ambientais** que **não existem hoje**: cogumelos perto da água, ossos perto do fogo, plumas grandes perto do vento, parafusos perto do elétrico, cristais sombrios perto da sombra (Fase 1).
-- Cada decoração é um tile decorativo (não-caminhável OU caminhável mas com sprite específico).
-
-#### 4.2. Indicador visual de portal próximo
-Quando o jogador estiver a ≤2 tiles de qualquer portal:
-- Setas piscantes apontando para o portal
-- Texto sutil acima do portal: "Pressione ↑/↓/←/→ para entrar"
-- Já existe `_draw_portal_indicators` — verifique e melhore se necessário.
-
-#### 4.3. Tinta de iluminação por região (já parcialmente existe)
-Verifique `REGION_TINTS` e ajuste para que cada região tenha um tint **claramente perceptível** (mas não obtrusivo — alpha 25-40).
-
-### FASE 5 — Tela inicial (MenuScene)
-
-**Problema atual:** o menu funciona mas tem visual relativamente simples (estrelas + título + pentágono de elementos).
-
-**Melhorias:**
-
-#### 5.1. Background animado mais rico
-- **Camada parallax**: 3 camadas de partículas com velocidades diferentes
-- Silhuetas dos 5 bosses **passando lentamente atrás** do título (alpha baixo, 30-50)
-
-#### 5.2. Título "ELEMENTAL BATTLE" com efeito
-- **Cores dos elementos rotacionando** nas letras (Fogo→Água→Planta→Elétrico→Sombra ciclando)
-- Pequeno **brilho lente** passando pela letra periodicamente
-
-#### 5.3. Pentágono de elementos
-- Quando hover, mostrar **descrição do elemento** abaixo: "Dark — Sombra. Forte contra Fogo. Fraco contra Elétrico."
-- Ícone do elemento **maior** e **animado** (Fogo crepita, Água ondula, etc.)
-
-#### 5.4. Botão "Como jogar?" e "Créditos"
-Adicionar dois botões pequenos abaixo do pentágono:
-- "Como jogar?" → modal com controles (setas, ENTER, ESC)
-- "Créditos" → modal com nomes dos integrantes
-
-### FASE 6 — Sprite & Animation polish
-
-#### 6.1. Criar sprite **dedicado** para `magma_titan`
-Hoje reusa `flame_hound`. Criar matriz 16×16 nova representando uma criatura **maior, de pedra ardente**, no padrão da factory.
-
-#### 6.2. Criar sprite **dedicado** para `storm_eagle`
-Hoje reusa `storm_raven`. Criar nova matriz 16×16 — pássaro grande de raios, asas mais abertas.
-
-#### 6.3. Criar sprite **dedicado** para `shadow_lord`
-Pode reusar `void_emperor` (que já é Dark) ou criar novo. **Decisão:** comece reusando `void_emperor`. Só crie novo se sobrar tempo.
-
-#### 6.4. AnimationController (opcional — só se sobrar tempo)
-Sistema centralizado de máquina de estados para sprites animados. **Não fazer** se atrasar a entrega visual.
+**PARE ao final da Fase 3. Aguarde confirmação.**
 
 ---
 
-## 7. Critérios de aceitação por fase
+## FASE 4 — CASOS DE BORDA
 
-Antes de declarar uma fase pronta, **mentalmente valide:**
+Verifique e corrija:
 
-- ✅ O código roda sem `ImportError`, `AttributeError`, `KeyError`?
-- ✅ A interface OO foi mantida (herança, polimorfismo)?
-- ✅ Nenhuma dependência nova foi adicionada?
-- ✅ Nenhum sistema existente foi quebrado (audio, score, save, IA)?
-- ✅ Os sprites antigos continuam como fallback se algo der errado?
-- ✅ O HP não vai negativo em nenhuma situação?
-
----
-
-## 8. Anti-padrões PROIBIDOS
-
-🚫 **Não fazer:**
-- Renomear arquivos/classes existentes "para ficar mais bonito" — quebra imports.
-- Mover funções de lugar sem necessidade técnica.
-- Criar arquivos `helper.py`, `utils.py`, `common.py` genéricos — coloque a função no módulo onde ela é usada.
-- Criar uma classe `Manager`, `Handler`, `Service` para encapsular 3 linhas. Se cabe em 3 linhas, é uma função.
-- Adicionar `try/except: pass` para "esconder" erros. Se um erro pode acontecer, trate-o explicitamente OU deixe estourar.
-- Adicionar `print` de debug no código final. Use `logging.debug` se realmente precisar.
-- Reescrever um arquivo inteiro quando 5 linhas mudaram.
-- "Modernizar" código que funciona (ex.: trocar `for i in range(len(x))` que está claro por list comprehension obscura).
-- Implementar features que **não estão na roadmap**. Se tiver uma ideia, **sugira** ao usuário em 1 linha, não implemente.
+1. **Colisão com parede:** segurar a tecla contra uma parede não pode travar o
+   jogo nem spammar o SFX de passo. O herói fica parado, encarando a direção, sem
+   som repetido.
+2. **Troca de mapa durante o tween:** entrar num portal só acontece em
+   `_finish_move`, então o herói nunca deve trocar de cena no meio do
+   deslizamento. Confirme.
+3. **Volta da batalha:** ao retornar de `BattleScene` para o overworld, o herói
+   precisa aparecer alinhado ao tile. Garanta `_sync_pixel_to_grid()` no caminho
+   de retorno.
+4. **FPS baixo / dt grande:** se `dt` for maior que `_move_duration` (freeze,
+   janela arrastada), o tween deve completar sem "pular" dois tiles. Clampe
+   `_move_progress` em 1.0 e processe **um** tile por frame.
+5. **Regiões:** `_detect_region()` deve usar `player_grid_x/y` (grid efetivado),
+   não o destino — a notificação de região dispara na chegada.
 
 ---
 
-## 9. Como reportar progresso
+## FASE 5 — CHECKLIST DE TESTE (me entregue preenchido)
 
-Após cada fase concluída, responda neste formato:
-
-```
-Fase X concluída.
-Mudanças:
-- arquivo.py: <o que mudou em 1 linha>
-- arquivo2.py: <o que mudou em 1 linha>
-Pendências da fase: <"nenhuma" ou lista>
-Próximo: Fase X+1 — <título>. Posso prosseguir?
-```
-
-Sem screenshots. Sem narrativa longa. Sem celebração ("ficou incrível!"). Sem perguntar 3 coisas — pergunte **uma** se necessário.
+- [ ] Segurando uma direção, o herói desliza continuamente, sem micro-pausas
+      entre tiles
+- [ ] Soltar a tecla para o herói exatamente sobre um tile (nunca no meio)
+- [ ] Trocar de direção não causa "engasgo" na animação
+- [ ] Câmera acompanha sem tremor nem sensação de atraso
+- [ ] Andar contra parede: sem travar, sem som repetido, direção correta
+- [ ] Portal: entra na batalha só ao chegar no tile do portal
+- [ ] Retorno da batalha: herói alinhado ao grid
+- [ ] Notificação de região dispara uma única vez ao cruzar a fronteira
+- [ ] Áudio, pontuação, save e batalha continuam funcionando
 
 ---
 
-## 10. Comandos úteis para o usuário rodar (não você)
+## FORMATO DAS RESPOSTAS
 
-```bash
-# Rodar o jogo
-python -m meu_jogo.main
-
-# Gerar áudio placeholder (uma vez só)
-python meu_jogo/midia/gerar_audio_placeholder.py
-
-# Limpar saves
-rm -f meu_jogo/save.json
-```
-
----
-
-## 11. Nota final ao Claude Code
-
-Você é um **engenheiro sênior contratado para finalizar um projeto de faculdade**. O usuário tem prazo, tem orçamento de tokens limitado, e já fez 70% do trabalho. Sua função é **complementar com cirurgia**, não reescrever a tese de outra pessoa.
-
-Quando em dúvida: **faça menos, pergunte mais (uma vez), entregue bem**.
+- Uma fase por vez. **Sempre pare no gate e espere meu "ok".**
+- Máx. ~60 linhas de resposta por fase, fora o diff.
+- Mostre apenas os trechos alterados, não arquivos inteiros.
+- Não releia arquivos que já leu na Fase 0 dentro da mesma sessão.
+- Se encontrar algo na auditoria que contradiga este prompt (ex.: a cena não é
+  recriada na troca de mapa), **pare e me avise antes de improvisar**.

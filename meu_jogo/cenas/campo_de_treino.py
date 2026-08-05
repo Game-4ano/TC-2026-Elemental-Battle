@@ -47,6 +47,8 @@ _ELEM_COLORS = {
 
 class CampoDeTreinoScene(GameScene):
 
+    MOVE_SPEED = 190.0  # pixels/segundo — velocidade do deslize entre tiles
+
     def __init__(self, manager):
         super().__init__(manager)
         self.font     = pygame.font.SysFont(None, 22)
@@ -56,8 +58,13 @@ class CampoDeTreinoScene(GameScene):
         self.player_grid_y = 14
 
         self._facing_left   = False
-        self._move_cooldown = 0.18
-        self._move_timer    = 0.0
+
+        # Posicao visual (pixels, float) — desliza suavemente entre tiles,
+        # desacoplada da posicao logica (grid) usada para colisao/portais.
+        self._visual_x = float(self.player_grid_x * TILE_SIZE)
+        self._visual_y = float(self.player_grid_y * TILE_SIZE)
+        self._glide_active = False
+        self._glide_target  = pygame.Vector2(self._visual_x, self._visual_y)
 
         self._hero_ctrl = AnimationController({
             "idle":       {"anim_key": "hero_idle",       "fps": 1.8, "loop": True},
@@ -79,12 +86,16 @@ class CampoDeTreinoScene(GameScene):
         pass
 
     def _try_move(self, dx: int, dy: int):
+        if self._glide_active:
+            return
         nx = self.player_grid_x + dx
         ny = self.player_grid_y + dy
         cmap = self.manager.map_manager.current_map
         if not cmap.is_walkable(nx, ny):
             return
         self.player_grid_x, self.player_grid_y = nx, ny
+        self._glide_target = pygame.Vector2(nx * TILE_SIZE, ny * TILE_SIZE)
+        self._glide_active = True
         self.manager.audio.play_sfx("step", volume=0.35)
         tile = cmap.get_tile_at(nx, ny)
         if isinstance(tile, PortalTile):
@@ -135,13 +146,20 @@ class CampoDeTreinoScene(GameScene):
         elif keys[pygame.K_DOWN]:
             dy, moving =  1, True
 
-        if moving:
-            self._move_timer -= dt
-            if self._move_timer <= 0:
-                self._try_move(dx, dy)
-                self._move_timer = self._move_cooldown
-        else:
-            self._move_timer = 0.0
+        if moving and not self._glide_active:
+            self._try_move(dx, dy)
+
+        if self._glide_active:
+            cur       = pygame.Vector2(self._visual_x, self._visual_y)
+            remaining = self._glide_target - cur
+            dist      = remaining.length()
+            step      = self.MOVE_SPEED * dt
+            if step >= dist or dist < 0.5:
+                cur = pygame.Vector2(self._glide_target)
+                self._glide_active = False
+            else:
+                cur += remaining.normalize() * step
+            self._visual_x, self._visual_y = cur.x, cur.y
 
         self._hero_ctrl.flipped = self._facing_left
         if moving:
@@ -169,8 +187,8 @@ class CampoDeTreinoScene(GameScene):
             self._current_region = new_region
 
         # Câmera suave (lerp embutido no update_camera)
-        px = self.player_grid_x * TILE_SIZE + TILE_SIZE // 2
-        py = self.player_grid_y * TILE_SIZE + TILE_SIZE // 2
+        px = self._visual_x + TILE_SIZE // 2
+        py = self._visual_y + TILE_SIZE // 2
         self.manager.map_manager.current_map.update_camera(px, py, dt)
 
     # -----------------------------------------------------------------------
@@ -182,6 +200,19 @@ class CampoDeTreinoScene(GameScene):
         if tint:
             self._tint_surf.fill(tint)
             screen.blit(self._tint_surf, (0, 0))
+
+    def _draw_lightning_flash(self, screen: pygame.Surface):
+        """Raio horizontal esporadico cruzando a Sala Eletrica (~0.1s)."""
+        t     = pygame.time.get_ticks() / 1000.0
+        cycle = 3.3
+        phase = t % cycle
+        if phase < 0.1:
+            seed  = int(t / cycle)
+            y     = 60 + (seed * 137) % (SCREEN_HEIGHT - 140)
+            alpha = int(255 * (1 - phase / 0.1))
+            line  = pygame.Surface((SCREEN_WIDTH, 2), pygame.SRCALPHA)
+            line.fill((255, 255, 255, alpha))
+            screen.blit(line, (0, y))
 
     def _draw_portal_indicators(self, screen: pygame.Surface, cmap):
         t  = pygame.time.get_ticks() / 1000.0
@@ -208,11 +239,11 @@ class CampoDeTreinoScene(GameScene):
                     ay = sy + int(math.sin(angle) * orbit_r)
                     pygame.draw.circle(screen, (255, 255, 200), (ax, ay), 2)
 
-                # Texto de dica quando adjacente
-                dist = abs(dx) + abs(dy)
-                if dist <= 1:
+                # Texto de dica quando a até 2 tiles
+                dist = max(abs(dx), abs(dy))
+                if dist <= 2:
                     hint_alpha = int(180 + 75 * abs(math.sin(t * 3)))
-                    hint = self.font.render("Pressione ← → ↑ ↓", True, bright)
+                    hint = self.font.render("Pressione ← → ↑ ↓ para entrar", True, bright)
                     hint.set_alpha(hint_alpha)
                     screen.blit(hint, (sx - hint.get_width() // 2, sy - TILE_SIZE - 8))
 
@@ -283,9 +314,11 @@ class CampoDeTreinoScene(GameScene):
 
         # Tint ambiental por região
         self._draw_region_tint(screen)
+        if self.manager.map_manager.current_map_name == "SALA_BATALHA_ELETRICA":
+            self._draw_lightning_flash(screen)
 
-        sx = int(self.player_grid_x * TILE_SIZE - cmap.camera_offset_x)
-        sy = int(self.player_grid_y * TILE_SIZE - cmap.camera_offset_y)
+        sx = int(self._visual_x - cmap.camera_offset_x)
+        sy = int(self._visual_y - cmap.camera_offset_y)
 
         self._draw_hero_shadow(screen, sx, sy)
 

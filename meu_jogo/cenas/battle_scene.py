@@ -554,7 +554,6 @@ class BattleScene(GameScene):
             (self._defend_action.uses_left,  DefendAction.MAX_USES),
             (self._heal_action.uses_left,    HealAction.MAX_USES),
         ]
-        _ICONS = ["Atq", "Esp", "Def", "Cur"]
 
         btn_w, btn_h = 148, 32
         col_x = [box.x + box.w - 312, box.x + box.w - 156]
@@ -602,15 +601,35 @@ class BattleScene(GameScene):
                 cor_txt = (120, 120, 120) if sem_uso else (200, 200, 200)
                 cx4, cy4 = bx2 + btn_w // 2, by2 + 7
 
-            icon_s = f.render(_ICONS[i], True, cor_txt)
-            lbl_s  = f.render(label,     True, cor_txt)
-            screen.blit(icon_s, (cx4 - icon_s.get_width() // 2 - 26, cy4))
-            screen.blit(lbl_s,  (cx4 - lbl_s.get_width()  // 2 +  8, cy4))
+            self._draw_action_icon(screen, i, cx4 - 26, cy4 + 7, cor_txt)
+            lbl_s = f.render(label, True, cor_txt)
+            screen.blit(lbl_s, (cx4 - lbl_s.get_width() // 2 + 8, cy4))
 
             if info is not None:
                 tu = sf.render(f"{info[0]}/{info[1]}", True,
                                (200, 200, 200) if sel else (140, 140, 140))
                 screen.blit(tu, (cx4 - tu.get_width() // 2, cy4 + 14))
+
+    def _draw_action_icon(self, screen, idx, cx, cy, color):
+        """Icone desenhado (espada/estrela/escudo/cruz) para o menu de acoes."""
+        if idx == 0:      # Atacar — espada
+            pygame.draw.line(screen, color, (cx - 5, cy + 5), (cx + 5, cy - 5), 2)
+            pygame.draw.line(screen, color, (cx - 6, cy + 2), (cx - 2, cy + 6), 2)
+            pygame.draw.line(screen, color, (cx + 2, cy - 6), (cx + 6, cy - 2), 2)
+        elif idx == 1:    # Especial — estrela
+            pts = []
+            for k in range(10):
+                ang = -math.pi / 2 + k * math.pi / 5
+                r   = 6 if k % 2 == 0 else 3
+                pts.append((cx + r * math.cos(ang), cy + r * math.sin(ang)))
+            pygame.draw.polygon(screen, color, pts)
+        elif idx == 2:    # Defender — escudo
+            pts = [(cx - 6, cy - 6), (cx + 6, cy - 6), (cx + 6, cy + 1),
+                   (cx, cy + 7), (cx - 6, cy + 1)]
+            pygame.draw.polygon(screen, color, pts, 2)
+        else:             # Curar — cruz
+            pygame.draw.rect(screen, color, (cx - 2, cy - 6, 4, 12))
+            pygame.draw.rect(screen, color, (cx - 6, cy - 2, 12, 4))
 
     def _draw_summary_panel(self, screen):
         """Painel de resultado exibido ao fim da batalha antes de voltar ao mapa."""
