@@ -22,7 +22,7 @@ from meu_jogo.core.progression import build_boss
 # testar porque o boss recebe os stats de tier 0 (o mais fraco).
 ORDEM_SALAS = [
     "SALA_BATALHA_FOGO", "SALA_BATALHA_AGUA", "SALA_BATALHA_ELETRICA",
-    "SALA_BATALHA_VENTO", "SALA_BATALHA_SOMBRA",
+    "SALA_BATALHA_VENTO", "SALA_BATALHA_SOMBRA", "SALA_BATALHA_PLANTA",
 ]
 
 HEAL_THRESHOLD = 0.35

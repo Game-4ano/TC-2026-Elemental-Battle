@@ -21,7 +21,7 @@ def build_boss(dest_map_name: str, defeated_bosses: set[str]) -> Boss:
     identidade = BOSS_BASE[dest_map_name]
     tier       = len(defeated_bosses)
 
-    return Boss(
+    boss = Boss(
         name=identidade["name"],
         hp=BOSS_BASE_HP + BOSS_HP_PER_TIER * tier,
         damage=BOSS_BASE_DAMAGE + BOSS_DAMAGE_PER_TIER * tier,
@@ -30,3 +30,7 @@ def build_boss(dest_map_name: str, defeated_bosses: set[str]) -> Boss:
         weakness=identidade["weakness"],
         sprite_key=identidade["sprite_key"],
     )
+    # Nivel exibido no HUD acompanha o tier (1 no primeiro boss, 2 no
+    # segundo...) para refletir visualmente que o boss esta mais forte.
+    boss.level = tier + 1
+    return boss

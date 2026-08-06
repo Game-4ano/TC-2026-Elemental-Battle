@@ -15,12 +15,12 @@ from meu_jogo.core.map import (
     # Caminhos
     StoneRoadTile, WoodBridgeTile,
     # Arenas
-    IceArenaTile, VolcanoFloorTile, SkyArenaTile, MetalArenaTile,
+    IceArenaTile, VolcanoFloorTile, SkyArenaTile, MetalArenaTile, ForestArenaTile,
     DeepWaterTile, SkyVoidTile,
     # Decorativos de sala
     IceStalactiteTile, BubbleTile, LavaDropTile, CircuitFloorTile, NeonBorderTile,
     # Sombra
-    VoidFloorTile, ShadowCrystalTile, DarkMistTile,
+    VoidFloorTile, ShadowCrystalTile, DarkMistTile, TwilightTile,
     # Decorações ambientais do mundo aberto
     MushroomTile, BoneTile, BoltTile,
 )
@@ -106,6 +106,14 @@ GLOBAL_TILE_TYPES = {
     "F": PortalTile("Portal Fogo",     (220,  60,   0), "SALA_BATALHA_FOGO",     1, 1),
     "O": PortalTile("Saída",           ( 50, 210, 100), "MUNDO_ABERTO",         20, 14),
     "^": PortalTile("Portal Sombra",   (140,  50, 200), "SALA_BATALHA_SOMBRA",   1,  1),
+    "%": PortalTile("Portal Planta",   ( 60, 200,  60), "SALA_BATALHA_PLANTA",   1,  1),
+    # Degrade Vazio Sombrio -> Ceu dos Ventos (3 colunas de transicao)
+    "1": TwilightTile(0.25),
+    "2": TwilightTile(0.5),
+    "3": TwilightTile(0.75),
+    # Clareira sombria (moldura do portal Sombra, para nao ficar solto entre nuvens)
+    "!": VoidFloorTile(),
+    "~": DarkMistTile(),
     # Decorações ambientais do mundo aberto
     "q": ShadowCrystalTile(),   # cristal sombrio perto do portal sombra
     "m": MushroomTile(),        # cogumelo perto da água (oeste)
@@ -136,11 +144,11 @@ MUNDO_ABERTO_MATRIX = [
 # col: 0   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18  19  20  21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36  37  38  39
 # REGIÃO NORTE — Céu dos Ventos (lin 0-7)
   [X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  X], # 0
-  [X,  U,  U,  U,  U,  Z,  Z,  Z,  Z,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U, "W", U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  X,  X,  X,  X,  X,  X,  X,  X,  X], # 1 ← Portal Vento
-  [X,  U,  J,  J,  U,  Z,  N, "N",  Z,  U,  J,  N,  J,  U,  U,  U,  J,  N,  U,  U,  U,  U,  J,  N,  U,  U,  J,  U,  U,  U,  U,  X,  X,  X,  X,  X,  X,  X,  X,  X], # 2
-  [X,  U, "q",  Z,  Z, "^",  N,  N,  Z,  Z,  J,  J,  Z,  Z,  U,  U,  J,  J,  Z,  Z,  Z,  Z,  J,  J,  Z,  Z,  J,  Z,  U,  U,  U,  X,  X,  X,  X,  X,  X,  X,  X,  X], # 3
-  [X,  U,  J,  Z,  U,  Z,  U,  U,  Z,  U,  J,  J,  U,  Z,  U,  U,  J,  J,  U,  Z,  U,  Z,  J,  J,  U,  Z,  J,  Z,  U,  U,  U,  X,  X,  X,  X,  X,  X,  X,  X,  X], # 4
-  [X,  U,  U,  Z,  U,  U,  U,  U,  Z,  U,  U,  U,  U,  Z,  U,  U,  U,  U,  U,  Z,  U,  Z,  U,  U,  U,  Z,  U,  Z,  U,  U,  U,  X,  X,  X,  X,  X,  X,  X,  X,  X], # 5
+  [X, "q", "!", "!", "!", "!", "!", "!", "q", "!", "!", "!", "!", "!", "q", "1", "2", "3",  U,  U, "W", U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  X,  X,  X,  X,  X,  X,  X,  X,  X], # 1 ← Portal Vento
+  [X, "!", "!", "!", "!", "!", "!", "~", "!", "!", "!", "!", "!", "!", "~", "1", "2", "3",  U,  U,  U,  U,  J,  N,  U,  U,  J,  U,  U,  U,  U,  X,  X,  X,  X,  X,  X,  X,  X,  X], # 2
+  [X, "!", "q", "!", "!", "^", "!", "!", "!", "!", "!", "!", "!", "!", "!", "1", "2", "3",  Z,  Z,  Z,  Z,  J,  J,  Z,  Z,  J,  Z,  U,  U,  U,  X,  X,  X,  X,  X,  X,  X,  X,  X], # 3 ← Portal Sombra
+  [X, "!", "!", "~", "!", "!", "!", "!", "q", "!", "!", "!", "!", "q", "!", "1", "2", "3",  U,  Z,  U,  Z,  J,  J,  U,  Z,  J,  Z,  U,  U,  U,  X,  X,  X,  X,  X,  X,  X,  X,  X], # 4
+  [X, "!", "!", "!", "q", "!", "!", "~", "!", "!", "!", "!", "!", "!", "!", "1", "2", "3",  U,  Z,  U,  Z,  U,  U,  U,  Z,  U,  Z,  U,  U,  U,  X,  X,  X,  X,  X,  X,  X,  X,  X], # 5
   [X,  U,  U,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  U,  U,  X,  X,  X,  X,  X,  X,  X,  X,  X], # 6 ← corredor norte
   [X,  U,  U,  C,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  C,  U,  U,  X,  X,  X,  X,  X,  X,  X,  X,  X], # 7
 
@@ -155,7 +163,7 @@ MUNDO_ABERTO_MATRIX = [
   [X,  P,  P,  M,  g,  T,  g,  g,  g,  g,  T,  g,  g,  g,  g,  T,  g,  g,  g,  g,  T,  g,  g,  g,  g,  g,  g,  g,  M,  g,  g,  H,  K,  L,  L,  K,  H,  X,  X,  X], # 13
   [X, "A", P,  M,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  M,  g,  g,  H,  K,  L,  L,  K, "F", X,  X,  X], # 14 ← Portal Água/Fogo
   [X,  P,  R,  M,  g,  g, "b", g,  g, "b", g,  g, "b", g,  g,  g, "b", g,  g,  g,  g,  g, "b", g,  g,  g,  g,  g,  M,  g,  g,  H,  K,  L,  L,  K,  H,  X,  X,  X], # 15
-  [X,  P,  P,  M,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  M,  g,  g,  H,  Q,  L,  L,  Q,  H,  X,  X,  X], # 16
+  [X,  P,  P,  M,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g, "%",  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  M,  g,  g,  H,  Q,  L,  L,  Q,  H,  X,  X,  X], # 16 ← Portal Planta
   [X,  P,  P,  M,  g,  T,  g,  g,  g,  g,  T,  g,  g,  g,  g,  T,  g,  g,  g,  g,  T,  g,  g,  g,  g,  g,  g,  g,  M,  g,  g,  H, "f",  Q,  Q,  H,  H,  X,  X,  X], # 17
   [X,  P,  P,  M,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  g,  M,  g,  g,  X,  H,  H,  H,  H,  X,  X,  X,  X], # 18
 
@@ -328,6 +336,32 @@ _sombra_raw = build_themed_room("v", "X", _SOMBRA_DECO, 8, 6)
 SALA_BATALHA_SOMBRA_MATRIX = _sombra_raw
 
 
+# --- SALA PLANTA (Forest Guardian) — Bosque Sagrado ---
+_GRAMA_DECO = [
+    # Arvores emoldurando a clareira
+    (1, 1,"T"), (1,10,"T"), (8, 1,"T"), (8,10,"T"),
+    (1, 2,"T"), (1, 9,"T"), (7, 1,"T"), (7,10,"T"),
+    (2, 1,"T"), (2,10,"T"),
+    # Arbustos espalhados
+    (3, 3,"b"), (3, 8,"b"), (6, 3,"b"), (6, 8,"b"),
+    (2, 5,"b"), (2, 6,"b"),
+    # Grama florida central
+    (4, 5,"g"), (4, 6,"g"), (5, 5,"g"), (5, 6,"g"),
+    (4, 2,"g"), (5, 9,"g"), (3, 5,"g"), (6, 6,"g"),
+]
+
+GRASS_ROOM_TILES_BATTLE = {
+    "X": WallTile(),
+    "V": ForestArenaTile(),
+    "T": TreeTile(),
+    "b": BushTile(),
+    "g": FlowerGrassTile(),
+    "O": PortalTile("Saída", (50, 210, 100), "MUNDO_ABERTO", 15, 15),
+}
+_grama_raw = build_themed_room("V", "X", _GRAMA_DECO, 8, 6)
+SALA_BATALHA_PLANTA_MATRIX = _grama_raw
+
+
 # -----------------------------------------------------------------------
 # Tile types para salas (herdam GLOBAL + sobrescritas)
 # -----------------------------------------------------------------------
@@ -336,6 +370,7 @@ FIRE_ROOM_TILES   = make_room_tiles(GLOBAL_TILE_TYPES, FIRE_ROOM_TILES_BATTLE)
 WIND_ROOM_TILES   = make_room_tiles(GLOBAL_TILE_TYPES, WIND_ROOM_TILES_BATTLE)
 ELEC_ROOM_TILES   = make_room_tiles(GLOBAL_TILE_TYPES, ELEC_ROOM_TILES_BATTLE)
 SHADOW_ROOM_TILES = make_room_tiles(GLOBAL_TILE_TYPES, SHADOW_ROOM_TILES_BATTLE)
+GRASS_ROOM_TILES  = make_room_tiles(GLOBAL_TILE_TYPES, GRASS_ROOM_TILES_BATTLE)
 
 
 # -----------------------------------------------------------------------
@@ -365,6 +400,10 @@ ALL_MAP_DATA = {
     "SALA_BATALHA_SOMBRA": {
         "matrix":     SALA_BATALHA_SOMBRA_MATRIX,
         "tile_types": SHADOW_ROOM_TILES,
+    },
+    "SALA_BATALHA_PLANTA": {
+        "matrix":     SALA_BATALHA_PLANTA_MATRIX,
+        "tile_types": GRASS_ROOM_TILES,
     },
 }
 
@@ -397,5 +436,18 @@ REGIONS = {
         "name": "Clareira Central",
         "color": (100, 200, 100),
         "tiles": [(c, r) for c in range(3, 31) for r in range(12, 19)],
+    },
+    # Sub-regioes especificas dos clareiras/portais de boss — sobrescrevem a
+    # regiao maior (ceu_ventos/centro) nas suas proprias celulas, pois entram
+    # depois no dict (ultima atribuicao vence no _REGION_LOOKUP).
+    "vazio_sombrio": {
+        "name": "Vazio Sombrio",
+        "color": (150, 60, 200),
+        "tiles": [(c, r) for c in range(1, 15) for r in range(1, 6)],
+    },
+    "bosque_sagrado": {
+        "name": "Bosque Sagrado",
+        "color": (60, 200, 60),
+        "tiles": [(c, r) for c in range(12, 19) for r in range(13, 19)],
     },
 }

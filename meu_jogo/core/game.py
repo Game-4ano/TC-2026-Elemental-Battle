@@ -7,7 +7,8 @@ from meu_jogo.core.config import DEFAULT_XP_REWARD, BOSS_XP_REWARD
 
 # Bosses do mundo aberto — GAME_COMPLETE quando todos forem derrotados.
 WORLD_BOSSES = frozenset({
-    "Hydra", "Thunder Beast", "Storm Eagle", "Magma Titan", "Shadow Lord"
+    "Hydra", "Thunder Beast", "Storm Eagle", "Magma Titan", "Shadow Lord",
+    "Forest Guardian",
 })
 
 

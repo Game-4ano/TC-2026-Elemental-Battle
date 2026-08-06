@@ -28,10 +28,10 @@ from meu_jogo.core.tiles.path_tiles import (
     StoneRoadTile, WoodPathTile, WoodBridgeTile,
 )
 from meu_jogo.core.tiles.arena_tiles import (
-    IceArenaTile, VolcanoFloorTile, SkyArenaTile, MetalArenaTile,
+    IceArenaTile, VolcanoFloorTile, SkyArenaTile, MetalArenaTile, ForestArenaTile,
 )
 from meu_jogo.core.tiles.shadow_tiles import (
-    VoidFloorTile, ShadowCrystalTile, DarkMistTile,
+    VoidFloorTile, ShadowCrystalTile, DarkMistTile, TwilightTile,
 )
 from meu_jogo.core.tiles.portal import PortalTile
 
@@ -47,7 +47,7 @@ __all__ = [
     "SandTile", "ChargedSandTile", "MetalTile", "LightningCrystalTile",
     "CircuitFloorTile", "NeonBorderTile", "BoltTile",
     "StoneRoadTile", "WoodPathTile", "WoodBridgeTile",
-    "IceArenaTile", "VolcanoFloorTile", "SkyArenaTile", "MetalArenaTile",
-    "VoidFloorTile", "ShadowCrystalTile", "DarkMistTile",
+    "IceArenaTile", "VolcanoFloorTile", "SkyArenaTile", "MetalArenaTile", "ForestArenaTile",
+    "VoidFloorTile", "ShadowCrystalTile", "DarkMistTile", "TwilightTile",
     "PortalTile",
 ]

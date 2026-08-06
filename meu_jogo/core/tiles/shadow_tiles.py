@@ -49,6 +49,47 @@ class ShadowCrystalTile(Tile):
             surface.blit(es, (rect.x + size // 2 - 5, rect.y + size // 2 - 2))
 
 
+class TwilightTile(Tile):
+    """Transicao gradual entre o Vazio Sombrio e o Ceu dos Ventos — a cor
+    interpola entre o roxo do vazio e o azul da nuvem conforme `blend`
+    (0.0 = quase vazio, 1.0 = quase ceu), pra sumir o corte seco entre os
+    dois biomas."""
+
+    _VOID_COLOR  = (15, 8, 28)
+    _CLOUD_COLOR = (210, 230, 250)
+
+    def __init__(self, blend: float):
+        self.blend = max(0.0, min(1.0, blend))
+        color = tuple(
+            int(v + (c - v) * self.blend)
+            for v, c in zip(self._VOID_COLOR, self._CLOUD_COLOR)
+        )
+        super().__init__("Crepúsculo", "Air", color, True, 0)
+
+    def draw(self, surface, x, y, size, offset_x=0, offset_y=0):
+        rect = pygame.Rect(x * size - offset_x, y * size - offset_y, size, size)
+        pygame.draw.rect(surface, self.color, rect)
+        t = pygame.time.get_ticks() / 1000.0
+
+        if self.blend < 0.7:   # particulas roxas, mais fortes perto do vazio
+            px2 = rect.x + (x * 9) % (size - 4) + 2
+            py2 = rect.y + (y * 7) % (size - 4) + 2
+            pulse = abs(math.sin(t * 2.0 + x * 0.4 + y * 0.3))
+            a = int(160 * (1.0 - self.blend) * pulse)
+            if a > 0:
+                s = pygame.Surface((4, 4), pygame.SRCALPHA)
+                pygame.draw.circle(s, (160, 0, 220, a), (2, 2), 2)
+                surface.blit(s, (px2 - 2, py2 - 2))
+
+        if self.blend > 0.3:   # nevoa de nuvem, mais forte perto do ceu
+            a = int(150 * self.blend)
+            cs = pygame.Surface((size - 4, size // 3), pygame.SRCALPHA)
+            pygame.draw.ellipse(cs, (230, 240, 255, a), cs.get_rect())
+            surface.blit(cs, (rect.x + 2, rect.y + size // 3))
+
+        pygame.draw.rect(surface, tuple(max(0, c - 30) for c in self.color), rect, 1)
+
+
 class DarkMistTile(Tile):
     def __init__(self):
         super().__init__("Névoa Sombria", "Dark", (25, 10, 40), True, 0)

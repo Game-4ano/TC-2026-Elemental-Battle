@@ -16,6 +16,7 @@ ROOM_BG = {
     "SALA_BATALHA_VENTO":    (20,  50,  80),
     "SALA_BATALHA_FOGO":     (70,  10,   0),
     "SALA_BATALHA_SOMBRA":   (20,   5,  35),
+    "SALA_BATALHA_PLANTA":   (10,  35,  10),
 }
 
 # Tint RGBA por região
@@ -25,6 +26,8 @@ REGION_TINTS = {
     "ceu_ventos":       (180, 220, 255, 28),
     "terra_trovejante": (200, 190,   0, 30),
     "centro":           ( 30, 160,  30, 28),
+    "vazio_sombrio":    (150,  60, 200, 36),
+    "bosque_sagrado":   ( 40, 180,  60, 30),
 }
 
 # Lookup rápido (col, row) → nome da região — construído na importação
@@ -108,10 +111,18 @@ class CampoDeTreinoScene(GameScene):
         from meu_jogo.core.progression import build_boss
         from meu_jogo.cenas.battle_scene import BattleScene
 
-        self.manager.audio.play_sfx("portal")
         dest = tile.destination_map_name
 
         if dest in BOSS_BASE:
+            nome_boss = BOSS_BASE[dest]["name"]
+            if nome_boss in self.manager.game.defeated_bosses:
+                self.manager.notificacoes.adicionar(
+                    f"Você já derrotou {nome_boss}!",
+                    cor=(160, 160, 200), duracao=2.0,
+                )
+                return
+
+            self.manager.audio.play_sfx("portal")
             boss   = build_boss(dest, self.manager.game.defeated_bosses)
             player = self.manager.game.player
             if not player.is_alive():
@@ -125,6 +136,7 @@ class CampoDeTreinoScene(GameScene):
                 BattleScene(self.manager, battle, bg_color=bg, bg_image=bg_img)
             )
         else:
+            self.manager.audio.play_sfx("portal")
             self.manager.map_manager.request_map_change(
                 dest, tile.spawn_x, tile.spawn_y
             )

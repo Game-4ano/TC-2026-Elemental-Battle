@@ -68,6 +68,26 @@ class SkyArenaTile(Tile):
         pygame.draw.rect(surface, (140, 170, 210), rect, 1)
 
 
+class ForestArenaTile(Tile):
+    def __init__(self):
+        super().__init__("Arena Ancestral", "Grass", (30, 70, 25), True, 0)
+
+    def draw(self, surface, x, y, size, offset_x=0, offset_y=0):
+        rect = pygame.Rect(x * size - offset_x, y * size - offset_y, size, size)
+        pygame.draw.rect(surface, self.color, rect)
+        t = pygame.time.get_ticks() / 1000.0
+        glow = int(60 + 40 * abs(math.sin(t * 1.4 + x * 0.4 + y * 0.3)))
+        pygame.draw.circle(surface, (60, glow + 90, 50), rect.center, size // 5, 1)
+        # Vinha pulsando na borda inferior
+        vine_phase = (t * 0.5 + x * 0.2 + y * 0.15) % 1.0
+        if vine_phase < 0.3:
+            va = int(70 * (1.0 - vine_phase / 0.3))
+            vs = pygame.Surface((size, 2), pygame.SRCALPHA)
+            vs.fill((90, 200, 90, va))
+            surface.blit(vs, (rect.x, rect.y + size - 3))
+        pygame.draw.rect(surface, (18, 45, 15), rect, 1)
+
+
 class MetalArenaTile(Tile):
     def __init__(self):
         super().__init__("Arena Metálica", "Electric", (120, 130, 150), True, 0)

@@ -26,4 +26,8 @@ BOSS_BASE = {
         "name": "Shadow Lord", "element": "Dark", "weakness": "Electric",
         "sprite_key": "void_emperor",
     },
+    "SALA_BATALHA_PLANTA": {
+        "name": "Forest Guardian", "element": "Grass", "weakness": "Fire",
+        "sprite_key": "forest_guardian",
+    },
 }
