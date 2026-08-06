@@ -1,323 +1,194 @@
-# PROMPT — MOVIMENTO SUAVE DO HERÓI NO OVERWORLD (Elemental Battle)
+# CLAUDE.md — Regras de Operação do Claude Code
 
-Projeto: **TC-2026-ELEMENTAL-BATTLE** — Python + Pygame.
-Arquivo-alvo principal: `meu_jogo/cenas/campo_de_treino.py`.
-Arquivos secundários: `meu_jogo/core/config.py`, `meu_jogo/core/map.py`,
-`meu_jogo/midia/sprites/animated_sprite.py`.
+Projeto: **Elemental Battle** (TC-2026-ELEMENTAL-BATTLE)
+Disciplina: Tópicos em Computação · Python + Pygame
+Rode o jogo com: `python -m meu_jogo.main`
 
----
-
-## PROBLEMA A RESOLVER
-
-Hoje o herói **teleporta de tile em tile**. Na `CampoDeTreinoScene.update()` existe:
-
-```python
-if moving:
-    self._move_timer -= dt
-    if self._move_timer <= 0:
-        self._try_move(dx, dy)          # muda player_grid_x/y de uma vez
-        self._move_timer = self._move_cooldown
-else:
-    self._move_timer = 0.0
-```
-
-Resultado visual: o sprite pula 32px de uma vez, a cada `_move_cooldown` segundos.
-Somando a isso, a animação de caminhada é **resetada** (`self._hero_anim.reset()`)
-sempre que o jogador solta/troca de tecla, e a câmera segue a posição **em grid**,
-o que amplifica o efeito de "salto".
-
-**Objetivo:** movimento contínuo em pixels (tween tile-a-tile), mantendo toda a
-lógica de grid que já existe (colisão via `is_walkable`, portais, `on_step`,
-regiões). O jogo continua sendo grid-based — só a *apresentação* passa a ser
-interpolada, no estilo Pokémon GBA.
+Este arquivo é lido no início de toda sessão. Siga-o à risca.
 
 ---
 
-## REGRAS OBRIGATÓRIAS (não negociáveis)
+## O QUE É O JOGO
 
-1. **NÃO** adicionar dependências externas — apenas `pygame` + stdlib.
-2. **NÃO** quebrar sistemas existentes: `AudioManager`, `ScoreSystem`,
-   `SaveSystem`, `SmartAI`, `BattleScene`, `MapManager`.
-3. Manter OO com herança/polimorfismo (requisito da disciplina).
-4. Toda animação/movimento baseado em `dt` — nada de `pygame.time.wait` ou
-   contagem de frames.
-5. **Edições cirúrgicas com `str_replace`** — não reescrever arquivos inteiros.
-6. Comentários de código em **português**.
-7. Constantes de tuning vão para `core/config.py` — zero números mágicos
-   espalhados pela cena.
-8. **NÃO** mexer em lógica de dano, XP, níveis, pontuação ou fluxo de batalha.
-9. `player_grid_x` / `player_grid_y` continuam sendo a **fonte da verdade** da
-   posição lógica. A posição em pixels é derivada, nunca o contrário.
+RPG por turnos estilo Pokémon: overworld de exploração (mundo aberto com câmera que
+segue o jogador) + batalhas por turno contra 4 chefes elementais. O jogador entra em
+portais no campo de treino para lutar; vencer todos os 4 conclui o jogo.
 
----
-
-## FASE 0 — AUDITORIA (SOMENTE LEITURA — GATE OBRIGATÓRIO)
-
-**Não edite nada nesta fase.** Leia e me reporte:
-
-1. `meu_jogo/cenas/campo_de_treino.py` completo — em especial:
-   - `__init__` (onde `player_grid_x/y`, `_move_timer`, `_move_cooldown`,
-     `_hero_anim`, `_facing_left` são criados)
-   - `update()`
-   - `_try_move()`
-   - `_enter_portal()`
-   - `render()` / `draw()` — onde exatamente o herói é blitado e com quais
-     coordenadas
-   - `_draw_hero_shadow()`
-   - `_draw_portal_indicators()`
-2. `Map.update_camera` em `meu_jogo/core/map.py` — assinatura atual e se já tem
-   lerp.
-3. `MapManager.process_map_change` / `request_map_change` — **como a cena
-   descobre que o mapa mudou** e quem escreve `player_grid_x/y` no spawn novo.
-4. `meu_jogo/core/config.py` — quais constantes já existem (`TILE_SIZE`, `FPS`,
-   `SCREEN_WIDTH/HEIGHT`).
-5. Liste **todos** os pontos do código que leem `player_grid_x` / `player_grid_y`
-   (grep no projeto inteiro). Isso é crítico: qualquer lugar que assuma que o
-   herói está sempre alinhado ao grid precisa ser revisado.
-
-**Entregue um relatório curto (máx. 40 linhas) e PARE. Aguarde meu "ok" para a
-Fase 1.**
+Sistemas já implementados e **funcionando** (não quebrar):
+- Áudio (`AudioManager`) — música e SFX gerados
+- Pontuação (`ScoreSystem`) — combo, multiplicadores de tempo/HP, highscore
+- Save (`SaveSystem`) — highscore em JSON
+- Menu de batalha com 4 ações: **Atacar, Especial, Defender, Curar**
+- IA Smart dos bosses
+- Cenas: MenuScene, CampoDeTreinoScene, BattleScene, GameOverScene, VictoryScene
+- Sistema de XP/nível em `character.py` (`gain_xp`, `level_up`)
 
 ---
 
-## FASE 1 — CONSTANTES + MÁQUINA DE ESTADO DO MOVIMENTO
+## COMO EU TRABALHO COM VOCÊ (fluxo obrigatório)
 
-### 1.1. `core/config.py`
+Eu (Artur) desenho os prompts na chat do Claude e te entrego prompts em markdown com
+**fases numeradas**. Sua execução segue estas regras sempre:
 
-Adicionar (com comentários em português):
-
-```python
-# --- Movimento do herói no overworld ---
-HERO_MOVE_SPEED   = 110.0   # pixels por segundo (≈0.29s por tile de 32px)
-HERO_WALK_FPS     = 8.0     # fps da animação de caminhada
-HERO_BOB_AMPLITUDE = 1.5    # oscilação vertical sutil ao andar (px)
-```
-
-Não remover nem alterar constantes existentes.
-
-### 1.2. Novo estado em `CampoDeTreinoScene.__init__`
-
-Substituir `_move_timer` / `_move_cooldown` por um tween:
-
-```python
-# Posição visual em pixels (canto superior-esquerdo do tile atual)
-self._pixel_x = float(self.player_grid_x * TILE_SIZE)
-self._pixel_y = float(self.player_grid_y * TILE_SIZE)
-
-# Tween de movimento entre tiles
-self._is_moving   = False
-self._origin_x    = self._pixel_x   # pixel de onde saiu
-self._origin_y    = self._pixel_y
-self._target_gx   = self.player_grid_x   # tile de destino
-self._target_gy   = self.player_grid_y
-self._move_progress = 0.0   # 0.0 → 1.0
-self._move_duration = TILE_SIZE / HERO_MOVE_SPEED
-```
-
-### 1.3. Reescrever `update()` — máquina de estado de 2 fases
-
-Lógica exata:
-
-**A) Se `self._is_moving` é True → só avança o tween:**
-
-```python
-self._move_progress += dt / self._move_duration
-if self._move_progress >= 1.0:
-    self._move_progress = 1.0
-    self._finish_move()      # chega no tile: commit + on_step + portal
-```
-
-E a cada frame recalcula a posição interpolada:
-
-```python
-t = self._move_progress
-self._pixel_x = self._origin_x + (self._target_gx * TILE_SIZE - self._origin_x) * t
-self._pixel_y = self._origin_y + (self._target_gy * TILE_SIZE - self._origin_y) * t
-```
-
-Use **interpolação linear**, não easing. Easing em movimento tile-a-tile contínuo
-cria uma pulsação de velocidade que fica pior que o problema original.
-
-**B) Se `self._is_moving` é False → lê o input e tenta iniciar um novo passo:**
-
-Mantenha a leitura atual (`pygame.key.get_pressed()`, eixo único, sem diagonal,
-`elif` encadeado). Se houver direção, chame `self._start_move(dx, dy)`.
-
-### 1.4. Novos métodos
-
-```python
-def _start_move(self, dx: int, dy: int) -> bool:
-    """Inicia o deslizamento para o tile vizinho, se for caminhável."""
-```
-- Atualiza `_facing_left` / direção (para a animação).
-- `nx, ny = self.player_grid_x + dx, self.player_grid_y + dy`
-- Se `not cmap.is_walkable(nx, ny)`: **não inicia o tween**, mas ainda assim
-  atualiza a direção do sprite (o herói "encara" a parede). Retorna `False`.
-- Se caminhável: seta `_origin_x/_origin_y` com o pixel **atual**,
-  `_target_gx/_target_gy = nx, ny`, `_move_progress = 0.0`,
-  `_is_moving = True`, toca `self.manager.audio.play_sfx("step", volume=0.35)`.
-  Retorna `True`.
-
-```python
-def _finish_move(self):
-    """Chegou no tile de destino: efetiva o grid e dispara os efeitos."""
-```
-- `self.player_grid_x, self.player_grid_y = self._target_gx, self._target_gy`
-- `self._pixel_x = float(self.player_grid_x * TILE_SIZE)` (snap exato, mata
-  acúmulo de erro de float)
-- `self._is_moving = False`
-- Pega o tile e dispara, **nesta ordem**: `PortalTile → self._enter_portal(tile)`,
-  senão `tile.on_step(...)`.
-  **Isso é uma mudança de comportamento importante:** hoje o portal dispara no
-  instante do commit; agora dispara só na chegada, evitando entrar em batalha com
-  o sprite no meio do caminho.
-- **Encadeamento fluido:** logo depois, se ainda houver tecla de direção
-  pressionada, chame `_start_move` de novo **no mesmo frame**. Sem isso, o herói
-  dá uma micro-pausa a cada tile e o problema visual continua.
-
-```python
-def _sync_pixel_to_grid(self):
-    """Realinha a posição em pixels ao grid (usar após troca de mapa/spawn)."""
-```
-- Zera o tween e coloca `_pixel_x/_pixel_y` exatamente sobre `player_grid_x/y`.
-- **Chame isso sempre que `player_grid_x/y` for escrito de fora** (spawn ao
-  entrar/sair de sala, retorno da batalha). Use a auditoria da Fase 0 para achar
-  esses pontos. Se a cena é recriada a cada troca de mapa, basta o `__init__`
-  cobrir — mas **confirme comigo antes de assumir isso**.
-
-**PARE ao final da Fase 1 e me mostre o diff. Aguarde confirmação.**
+1. **Uma fase/tarefa por vez.** Ao terminar: resumo curto do que mudou + como testar.
+   **PARE e aguarde meu OK** antes da fase seguinte. Nunca faça bulk de várias fases.
+2. **Fase 0 de auditoria** (somente leitura) quando o prompt pedir: mapeie a estrutura
+   real antes de editar qualquer coisa. Confirme comigo antes de tocar no código.
+3. **Edições cirúrgicas com `str_replace`.** Nunca reescreva um arquivo inteiro se dá
+   para editar um trecho. Não releia arquivos que já leu na mesma sessão.
+4. **Respostas curtas.** Sem despejar arquivos inteiros na saída; mostre só os diffs
+   relevantes e explique em poucas linhas.
+5. Se um pedido conflitar com estas regras ou com a arquitetura, **pare e me pergunte**
+   antes de improvisar.
 
 ---
 
-## FASE 2 — RENDERIZAÇÃO NA POSIÇÃO INTERPOLADA
+## RESTRIÇÕES DA DISCIPLINA (valem nota — inegociáveis)
 
-### 2.1. Desenho do herói
+- **Orientação a objetos com herança/polimorfismo.** O professor já criticou
+  fragmentação de lógica e "God-files"; arquitetura limpa é critério avaliado.
+  Ao adicionar personagens, prefira uma hierarquia adequada (`Character` → `Player`/
+  `Enemy`/`Boss`) a inchar uma classe só.
+- **Sem novas dependências.** Apenas Python stdlib + Pygame (Box2D já está autorizado
+  no projeto; qualquer outra lib precisa de aprovação do professor). Não instale nada.
+- **Física correta com dt.** Posição += velocidade × dt (nunca posição += velocidade).
+  Toda animação e movimento usam o `dt` do frame.
+- **Vetores agrupados.** Use `pygame.Vector2` para posição/velocidade — nunca x e y
+  soltos.
+- **Ponto flutuante** para posição/velocidade; converta para pixel só ao renderizar.
+- **Eu preciso saber explicar cada linha.** Gere código que eu entenda; comente as
+  partes não óbvias. Nada de "mágica" que eu não consiga defender num questionamento.
 
-Onde hoje o herói é desenhado a partir de `player_grid_x * TILE_SIZE`, passar a
-usar `self._pixel_x / self._pixel_y`:
+---
 
-```python
-sx = int(self._pixel_x - cmap.camera_offset_x)
-sy = int(self._pixel_y - cmap.camera_offset_y)
+## ARQUITETURA E ONDE CADA COISA VIVE
+
+```
+meu_jogo/
+  main.py            → só inicializa GameManager + cena inicial. Sem lógica de jogo.
+  core/              → motor: game_manager, scene_manager, game_state, config,
+                       battle, game, map, elements  (+ progression, se criado)
+  cenas/             → telas/renderização (menu, campo_de_treino, battle_scene, ...)
+  entidades/         → character, acoes, ai  (estado + regras, não desenham na tela)
+  data/              → characters_data, maps_data  (SÓ dados, sem lógica complexa)
+  midia/sprites/     → sprite_factory (pixel art), animated_sprite (animações)
+  utils/             → helpers (matemática, desenho, cores, debug)
+  testes/            → protótipos e scripts; não fazem parte do jogo final
 ```
 
-Use `int(...)` só no blit final — os cálculos internos permanecem em float.
-
-### 2.2. Câmera
-
-`update_camera` deve receber o **centro em pixels interpolado**, não o grid:
-
-```python
-px = self._pixel_x + TILE_SIZE // 2
-py = self._pixel_y + TILE_SIZE // 2
-self.manager.map_manager.current_map.update_camera(px, py, dt)
-```
-
-**Atenção ao double-smoothing:** com o herói já interpolado, um lerp de câmera
-muito lento gera sensação de atraso/borracha. Se `update_camera` já tem lerp,
-suba o fator para ~`12.0 * dt` (clampado em 1.0) ou deixe a câmera travada no
-alvo. Me mostre as duas opções e eu decido.
-
-### 2.3. Bob vertical e sombra
-
-Substituir o pulso da sombra baseado em `pygame.time.get_ticks()` por algo
-sincronizado com o passo real:
-
-```python
-# Oscilação vertical: 2 ciclos por tile (um por perna)
-bob = 0.0
-if self._is_moving:
-    bob = -abs(math.sin(self._move_progress * math.pi * 2)) * HERO_BOB_AMPLITUDE
-```
-
-- Aplicar `bob` no `sy` do sprite (não na sombra).
-- A sombra encolhe levemente quando `bob` está no pico (pé no ar) e volta ao
-  tamanho normal no contato. Mantenha sutil — 2–3px de variação, no máximo.
-
-### 2.4. Indicador de portal
-
-`_draw_portal_indicators` usa `player_grid_x/y` para medir distância. Mantenha em
-grid (a lógica de proximidade não precisa de precisão sub-tile), mas confirme que
-durante o tween o indicador não pisca — se piscar, use o tile de destino
-(`_target_gx/_target_gy`) quando `_is_moving` for True.
-
-**PARE ao final da Fase 2 e me mostre o resultado. Aguarde confirmação.**
+Regras de camada:
+- `main.py` simples. Nada de batalha/XP/mapas aqui.
+- `core/` controla funcionamento; **não** coloca sprites nem dados de inimigos aqui.
+- `cenas/` desenham; **não** implementam regras de dano/XP.
+- `entidades/` guardam estado e regras; **não** desenham direto na tela.
+- `data/` só definições prontas.
+- `midia/` só código de geração de arte/áudio; assets não viram lógica.
 
 ---
 
-## FASE 3 — CONTINUIDADE DA ANIMAÇÃO
+## CONVENÇÕES DE CÓDIGO
 
-Esta fase resolve a metade do problema que **não** é o teleporte.
-
-1. **Nunca chamar `reset()` enquanto o jogador estiver andando.** Hoje o
-   `else: self._hero_anim.reset()` zera o ciclo assim que há um frame sem input.
-   Nova regra:
-   - Se `_is_moving` **ou** há tecla de direção pressionada → `update(dt)`.
-   - Só chamar `reset()` quando o herói **parou de fato** (`not _is_moving` e sem
-     input), e mesmo assim voltando para o frame de idle, não para o frame 0 da
-     caminhada.
-2. **Trocar de direção não reinicia o ciclo.** Ir de esquerda para direita deve
-   apenas trocar `flipped` / a animação direcional, preservando `_index` e
-   `_timer` da animação atual. Se `AnimatedSprite` não permitir isso hoje,
-   adicione um método:
-   ```python
-   def copy_timing_from(self, other: "AnimatedSprite"):
-       """Herda índice e timer de outra animação (troca de direção sem reset)."""
-   ```
-3. **Sincronizar o fps do passo com a velocidade real:** com 4 frames de
-   caminhada e `HERO_MOVE_SPEED = 110`, um ciclo completo deve durar ~2 tiles.
-   Calcule `fps = 4 / (2 * self._move_duration)` em vez de deixar `8.0` fixo, e
-   documente a fórmula em comentário.
-4. Se as animações direcionais (`hero_walk_back` / `hero_walk_front`) ainda não
-   existirem na `sprite_factory`, **não as crie agora** — apenas deixe o código
-   preparado com fallback para `hero_walk` + flip horizontal. Criar sprites novos
-   é escopo de outro prompt.
-
-**PARE ao final da Fase 3. Aguarde confirmação.**
+- **Comentários e mensagens em português.**
+- **Constantes de tuning só em `core/config.py`.** Nada de números mágicos espalhados
+  (tamanho da janela, FPS, XP por nível, incrementos por nível, multiplicadores de
+  boss, etc.). Dados puros de personagem/mapa ficam em `data/`.
+- **Reusar antes de reconstruir.** Antes de criar um sistema novo, verifique se já
+  existe. Exemplos reais deste projeto:
+  - XP/nível já existe em `character.py` → wire nele, não crie paralelo.
+  - Cura (`HealAction`) já escala com `max_hp` → não duplicar essa lógica.
+- **Sprites novos seguem o padrão da factory:** matriz 16×16, palette dict, caracteres
+  de 1 letra, `'.'` = transparente. Não invente outro padrão — o professor espera
+  consistência.
+- **Tiles/sprites animados** usam `pygame.time.get_ticks()` para ciclos, ex:
+  `phase = (pygame.time.get_ticks() % 1000) / 1000.0`.
+- **Fallback preservado:** sprites/tiles antigos continuam funcionando se um novo
+  falhar. Nada de remover o caminho antigo sem substituto testado.
 
 ---
 
-## FASE 4 — CASOS DE BORDA
+## TRABALHO ATIVO: BUG DA MORTE + PROGRESSÃO + ESCALONAMENTO DE BOSSES
 
-Verifique e corrija:
+Workstream em andamento, guiado pelo arquivo `PROMPT_PROGRESSAO_CLAUDE_CODE.md` (5
+fases com gate de confirmação cada uma: Auditoria → Corrigir travamento na morte →
+Progressão do herói → Escalonamento dos bosses → Balanceamento/validação). Quando eu
+pedir para seguir com esse workstream, use aquele prompt como roteiro de fases — as
+regras abaixo são o contexto permanente que sustenta ele.
 
-1. **Colisão com parede:** segurar a tecla contra uma parede não pode travar o
-   jogo nem spammar o SFX de passo. O herói fica parado, encarando a direção, sem
-   som repetido.
-2. **Troca de mapa durante o tween:** entrar num portal só acontece em
-   `_finish_move`, então o herói nunca deve trocar de cena no meio do
-   deslizamento. Confirme.
-3. **Volta da batalha:** ao retornar de `BattleScene` para o overworld, o herói
-   precisa aparecer alinhado ao tile. Garanta `_sync_pixel_to_grid()` no caminho
-   de retorno.
-4. **FPS baixo / dt grande:** se `dt` for maior que `_move_duration` (freeze,
-   janela arrastada), o tween deve completar sem "pular" dois tiles. Clampe
-   `_move_progress` em 1.0 e processe **um** tile por frame.
-5. **Regiões:** `_detect_region()` deve usar `player_grid_x/y` (grid efetivado),
-   não o destino — a notificação de região dispara na chegada.
+**Objetivo do workstream:**
+1. Corrigir o travamento quando o jogador morre (derrota não chega ao GameOverScene).
+2. Herói ganha +1 nível por boss derrotado (vida, ataque, defesa e cura sobem).
+3. O primeiro boss enfrentado é sempre o mais fácil, não importa qual portal o
+   jogador escolher primeiro; cada boss seguinte sobe de nível e fica mais difícil.
+4. Balancear para o herói ficar mais forte sem virar overpower em relação ao boss.
+
+**Fatos já mapeados no código (não redescobrir — só confirmar na Fase 0):**
+- Sistema de XP/nível **já existe** em `entidades/character.py` (`level`, `xp`,
+  `gain_xp()`, `level_up()`), usando `XP_PER_LEVEL`, `HP_LEVEL_INCREMENT`,
+  `DAMAGE_LEVEL_INCREMENT`, `DEFENSE_LEVEL_INCREMENT` de `core/config.py`.
+  `level_up()` já restaura HP cheio e dispara `on_level_up` (registrado em `main.py`
+  com notificação + SFX). **Reusar — não criar sistema paralelo.**
+- `entidades/acoes.py`: Especial = dano ×1.8 (3 usos), Defender = 50% de redução
+  (2 usos), Curar = 30% do `max_hp` (2 usos) — a cura **já escala sozinha** quando
+  `max_hp` cresce por nível.
+- `data/characters_data.py`: bosses hoje são **singletons de módulo** com dificuldade
+  fixa por elemento (Hydra 100/16/4 → Magma Titan 160/28/8) + helper `reset_boss()`.
+  Isso conflita com o mundo aberto: escolher o portal do Magma Titan primeiro dá de
+  cara com o boss mais forte.
+- Herói base em `main.py`: 120 HP / 20 dano / 5 defesa, elemento Fire, fraqueza Water.
+- `cenas/battle_scene.py`: bloco "animação de morte antes de finalizar batalha"
+  (`_death_started`, `finished`) — provável origem do travamento na morte do jogador.
+- `core/game.py` mantém `defeated_bosses: set` — fonte de verdade da progressão.
+- `ScoreSystem.finalizar_batalha()` só é chamado em vitória e usa `enemy.is_boss`.
+
+**Regras específicas deste workstream:**
+- Progressão aplicada na **criação/preparação dos personagens**, nunca dentro do
+  fluxo de turnos (`core/battle.py`/`BattleScene` — turn-flow será refatorado à
+  parte; não engordar essa área agora).
+- Progressão é **por partida** (runtime); não alterar o formato do save.
+- Arquivos novos permitidos neste workstream: `core/progression.py` e
+  `meu_jogo/testes/balance_report.py`. Nada além disso sem combinar.
 
 ---
 
-## FASE 5 — CHECKLIST DE TESTE (me entregue preenchido)
+## ARMADILHAS CONHECIDAS DESTE PROJETO
 
-- [ ] Segurando uma direção, o herói desliza continuamente, sem micro-pausas
-      entre tiles
-- [ ] Soltar a tecla para o herói exatamente sobre um tile (nunca no meio)
-- [ ] Trocar de direção não causa "engasgo" na animação
-- [ ] Câmera acompanha sem tremor nem sensação de atraso
-- [ ] Andar contra parede: sem travar, sem som repetido, direção correta
-- [ ] Portal: entra na batalha só ao chegar no tile do portal
-- [ ] Retorno da batalha: herói alinhado ao grid
-- [ ] Notificação de região dispara uma única vez ao cruzar a fronteira
-- [ ] Áudio, pontuação, save e batalha continuam funcionando
+- **Bosses como singletons de módulo** (`data/characters_data.py`) têm stats fixos por
+  elemento e mutáveis — vazam estado entre lutas e quebram o escalonamento por ordem
+  de enfrentamento. Quando o design pedir dificuldade progressiva, crie **instância
+  nova por batalha**, nunca reutilize o singleton.
+- **`Character.take_damage` não faz clamp** — `self.hp -= real_damage` pode deixar HP
+  negativo. Ao mexer em dano/morte, garanta `hp = max(hp - real_damage, 0)` mantendo
+  o retorno de `real_damage` inalterado (o ScoreSystem depende dele).
+- **Fluxo de morte na BattleScene** pode travar se o personagem não tiver animação de
+  morte registrada (espera infinita por `is_finished`). Bloqueios de animação
+  precisam de timeout de segurança (~1.5–2.0s).
+- **`defeated_bosses` (set) em `core/game.py` é a fonte de verdade** da progressão do
+  mundo aberto. Nível do herói e nível do boss devem derivar dela — não crie
+  contadores paralelos.
+- **`ScoreSystem` depende de `enemy.is_boss`** e do valor de retorno de `take_damage`.
+  Não altere essas assinaturas sem avisar.
 
 ---
 
-## FORMATO DAS RESPOSTAS
+## NÃO QUEBRAR
 
-- Uma fase por vez. **Sempre pare no gate e espere meu "ok".**
-- Máx. ~60 linhas de resposta por fase, fora o diff.
-- Mostre apenas os trechos alterados, não arquivos inteiros.
-- Não releia arquivos que já leu na Fase 0 dentro da mesma sessão.
-- Se encontrar algo na auditoria que contradiga este prompt (ex.: a cena não é
-  recriada na troca de mapa), **pare e me avise antes de improvisar**.
+- AudioManager, ScoreSystem, SaveSystem, Smart AI.
+- As 4 ações do menu de batalha.
+- Fluxo Menu → Overworld → Batalha → GameOver/Victory.
+- Formato do JSON do save (progressão de nível é por partida/runtime; não persista
+  no save sem me pedir).
+
+---
+
+## GIT / ENTREGA
+
+- Commits pequenos e frequentes (mínimo 1 por semana), mensagens claras em português
+  descrevendo a mudança real. Nada de commit "falso".
+- Ao concluir uma fase aprovada, sugira uma mensagem de commit; **eu** faço o commit.
+
+---
+
+## RESUMO DE UMA LINHA
+
+Faça uma fase por vez, edite cirurgicamente, mantenha OO limpo e dt-based, centralize
+tuning no config, reuse o que já existe, e pare para eu confirmar antes de seguir.

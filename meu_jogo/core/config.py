@@ -29,3 +29,18 @@ DEFENSE_LEVEL_INCREMENT = 3
 DEFAULT_XP_REWARD = 50
 BOSS_XP_REWARD = 120
 TILE_SIZE = 32
+
+# Escalonamento de bosses — progride pela ORDEM de enfrentamento (quantos
+# bosses ja foram derrotados na partida), nao pelo elemento/portal escolhido.
+# Tier 0 = primeiro boss enfrentado, sempre o mais fraco.
+# Valores calibrados por simulacao (meu_jogo/testes/balance_report.py) para
+# que cada luta seja arriscada mesmo com o heroi full HP e no nivel esperado
+# — o heroi crescia mais rapido que o boss original (+5 dano/+3 defesa por
+# nivel vs +3/+1 por tier), entao o jogo so ficava mais facil com o tempo.
+BOSS_BASE_HP      = 110
+BOSS_BASE_DAMAGE  = 18
+BOSS_BASE_DEFENSE = 5
+
+BOSS_HP_PER_TIER      = 16
+BOSS_DAMAGE_PER_TIER  = 4
+BOSS_DEFENSE_PER_TIER = 2

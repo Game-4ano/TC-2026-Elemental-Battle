@@ -217,11 +217,13 @@ class CharacterObject(GameObject):
         screen.blit(name_s, (hud_x + 26, hud_y + 5))
 
         if self.character.is_boss:
+            # Canto inferior direito do painel — livre (barra de HP e nome do
+            # elemento ocupam só a metade esquerda), sem colidir com o nome.
             tbg = pygame.Surface((40, 14), pygame.SRCALPHA)
             tbg.fill((140, 90, 0, 220))
-            screen.blit(tbg, (panel.right - 46, hud_y + 3))
+            screen.blit(tbg, (panel.right - 46, hud_y + 46))
             screen.blit(sfont.render("BOSS", True, (255, 215, 0)),
-                        (panel.right - 44, hud_y + 4))
+                        (panel.right - 44, hud_y + 47))
 
         bar_w, bar_h = 160, 12
         bx, by = hud_x + 10, hud_y + 28

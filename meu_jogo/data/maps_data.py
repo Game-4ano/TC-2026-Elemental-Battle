@@ -24,7 +24,6 @@ from meu_jogo.core.map import (
     # Decorações ambientais do mundo aberto
     MushroomTile, BoneTile, BoltTile,
 )
-from meu_jogo.data.characters_data import ROOM_BOSS
 from meu_jogo.core.map_builder import build_themed_room, make_room_tiles
 
 # -----------------------------------------------------------------------
