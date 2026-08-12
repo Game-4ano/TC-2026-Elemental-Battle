@@ -1,34 +1,24 @@
 
 
 import pygame
+import sys
 
-from .settings import LARGURA_TELA, ALTURA_TELA, FPS
+pygame.init()
 
-class AssetsManager:
-    @staticmethod
-    def load_player_spritesheet(filepath: str, frame_w: int = 48, frame_h: int = 48):
-        sheet = pygame.image.load(filepath).convert()
-        sheet.set_colorkey((255, 255, 255))
+LARGURA_TELA = 800
+ALTURA_TELA = 600
+TAMANHO_TILE = 64
 
-        total_w, total_h = sheet.get_size()
-        sub_w = total_w // 4
-        sub_h = total_h // 4
+COLUNA_MAPA = 100
+LINHAS_MAPA = 100
 
-        animations = {0: [], 1: [], 2: [], 3: []}
+tela = pygame.display.set_mode((LARGURA_TELA, ALTURA_TELA))
+sprite_terra = pygame.surface((TAMANHO_TILE, TAMANHO_TILE))
+sprite_terra = pygame.image.load("assets/sprites/terraclara.png").convert_alpha()
 
-        for row in range(4):
-            for col in range(4):
-                rect = pygame.Rect(col * sub_w, row * sub_h, sub_w, sub_h)
-                frame = sheet.subsurface(rect).copy()
-                scaled_frame = pygame.transform.scale(frame, (frame_w, frame_h))
-                animations[row].append(scaled_frame)
-
-        return animations
-    
-    @staticmethod
-    def load_background(filepath: str) -> pygame.Surface:
-        bg = pygame.image.load(filepath).convert()
-        return pygame.transform.scale(bg, (LARGURA_TELA, ALTURA_TELA))
+jogador_x = ((COLUNA_MAPA * TAMANHO_TILE)) // 2
+jogador_y = ((LINHAS_MAPA * TAMANHO_TILE)) // 2
+velocidade = 15
 
 
-AssetManager = AssetsManager
+
