@@ -1,194 +1,251 @@
-# CLAUDE.md — Regras de Operação do Claude Code
+# PROMPT_VETORES_INTERFACES — Agrupar x/y em Vector2 nas interfaces
 
-Projeto: **Elemental Battle** (TC-2026-ELEMENTAL-BATTLE)
-Disciplina: Tópicos em Computação · Python + Pygame
-Rode o jogo com: `python -m meu_jogo.main`
-
-Este arquivo é lido no início de toda sessão. Siga-o à risca.
-
----
-
-## O QUE É O JOGO
-
-RPG por turnos estilo Pokémon: overworld de exploração (mundo aberto com câmera que
-segue o jogador) + batalhas por turno contra 4 chefes elementais. O jogador entra em
-portais no campo de treino para lutar; vencer todos os 4 conclui o jogo.
-
-Sistemas já implementados e **funcionando** (não quebrar):
-- Áudio (`AudioManager`) — música e SFX gerados
-- Pontuação (`ScoreSystem`) — combo, multiplicadores de tempo/HP, highscore
-- Save (`SaveSystem`) — highscore em JSON
-- Menu de batalha com 4 ações: **Atacar, Especial, Defender, Curar**
-- IA Smart dos bosses
-- Cenas: MenuScene, CampoDeTreinoScene, BattleScene, GameOverScene, VictoryScene
-- Sistema de XP/nível em `character.py` (`gain_xp`, `level_up`)
+> **Projeto:** Elemental Battle (TC-2026-ELEMENTAL-BATTLE) — Python + Pygame
+> **Tipo de tarefa:** Refatoração arquitetural (OO / clareza de interfaces)
+> **Executor:** Claude Code
+> Leia o `CLAUDE.md` da raiz antes de começar. Respostas curtas (3–8 linhas).
 
 ---
 
-## COMO EU TRABALHO COM VOCÊ (fluxo obrigatório)
+## 0. Exigência do professor (motivo desta tarefa)
 
-Eu (Artur) desenho os prompts na chat do Claude e te entrego prompts em markdown com
-**fases numeradas**. Sua execução segue estas regras sempre:
+Citação literal do enunciado (`0jogo.pdf`):
 
-1. **Uma fase/tarefa por vez.** Ao terminar: resumo curto do que mudou + como testar.
-   **PARE e aguarde meu OK** antes da fase seguinte. Nunca faça bulk de várias fases.
-2. **Fase 0 de auditoria** (somente leitura) quando o prompt pedir: mapeie a estrutura
-   real antes de editar qualquer coisa. Confirme comigo antes de tocar no código.
-3. **Edições cirúrgicas com `str_replace`.** Nunca reescreva um arquivo inteiro se dá
-   para editar um trecho. Não releia arquivos que já leu na mesma sessão.
-4. **Respostas curtas.** Sem despejar arquivos inteiros na saída; mostre só os diffs
-   relevantes e explique em poucas linhas.
-5. Se um pedido conflitar com estas regras ou com a arquitetura, **pare e me pergunte**
-   antes de improvisar.
+> "Para unidades geométricas como ponto e vetores (exemplo posição e velocidade
+> de um objeto), **não trabalhar com variáveis independentes para os eixos x e y.
+> Criem uma estrutura que agrupe essas duas variáveis x e y em um único objeto.**"
+>
+> "Não usar números inteiros para armazenar posição (velocidade, etc). Usem
+> pontos flutuantes."
 
----
+**Decisão de projeto:** a "estrutura que agrupa x e y" será o **`pygame.Vector2`**
+(já usado internamente, componentes float, sem dependência nova). Nenhuma classe
+`Vec2` própria é necessária. Padronizamos `pygame.Vector2` em **todas as
+interfaces públicas** que hoje recebem/expõem um par geométrico (posição,
+velocidade, offset de câmera, coordenada de grid, delta de movimento, spawn).
 
-## RESTRIÇÕES DA DISCIPLINA (valem nota — inegociáveis)
-
-- **Orientação a objetos com herança/polimorfismo.** O professor já criticou
-  fragmentação de lógica e "God-files"; arquitetura limpa é critério avaliado.
-  Ao adicionar personagens, prefira uma hierarquia adequada (`Character` → `Player`/
-  `Enemy`/`Boss`) a inchar uma classe só.
-- **Sem novas dependências.** Apenas Python stdlib + Pygame (Box2D já está autorizado
-  no projeto; qualquer outra lib precisa de aprovação do professor). Não instale nada.
-- **Física correta com dt.** Posição += velocidade × dt (nunca posição += velocidade).
-  Toda animação e movimento usam o `dt` do frame.
-- **Vetores agrupados.** Use `pygame.Vector2` para posição/velocidade — nunca x e y
-  soltos.
-- **Ponto flutuante** para posição/velocidade; converta para pixel só ao renderizar.
-- **Eu preciso saber explicar cada linha.** Gere código que eu entenda; comente as
-  partes não óbvias. Nada de "mágica" que eu não consiga defender num questionamento.
+**O que NÃO muda:** física (`apply_physics` já faz `position += velocity * dt`),
+lógica de score/HP/níveis, áudio, save, SmartAI, fluxo de cenas. Isto é só
+troca de *assinaturas* + os pontos de chamada correspondentes.
 
 ---
 
-## ARQUITETURA E ONDE CADA COISA VIVE
+## 1. Regras invioláveis
 
+1. **Apenas `str_replace` cirúrgico** — sem reescrever arquivos inteiros.
+2. **Sem novas bibliotecas** — só `pygame` + stdlib.
+3. **Comentários em português preservados.**
+4. **Polimorfismo intacto:** ao mudar a assinatura de um método da base (ex.
+   `Tile.draw`), **todos os overrides das subclasses e o(s) ponto(s) de chamada
+   mudam na MESMA fase.** Nunca deixar base e filha com assinaturas divergentes
+   (isso quebra LSP e o professor penaliza).
+5. **Nada de shim/compat pela metade** dentro de uma mesma fase: ou migra o
+   método e todos os seus usos, ou não toca.
+6. **Cada fase termina com STOP** e aguarda a confirmação do Artur antes de
+   seguir. As fases são independentes — dá pra parar em qualquer uma.
+7. Coordenadas de grid podem viajar como `Vector2` (float) na interface e ser
+   convertidas com `int(...)` **apenas no acesso à matriz** — não reintroduzir
+   `grid_x`/`grid_y` como campos separados.
+
+---
+
+## FASE 0 — AUDITORIA (somente leitura, NÃO edite nada)
+
+Mapeie e **liste** todas as assinaturas e atributos que hoje separam um par
+geométrico em x/y. Para cada ocorrência informe: arquivo, linha, assinatura
+atual e todos os pontos de chamada. Cubra no mínimo:
+
+- `core/game_object.py` → `GameObject.__init__(self, x, y)`.
+- Subclasses de `GameObject` e seus construtores (ex. `Projectile`,
+  `CharacterObject` em `cenas/battle_scene.py`) e como chamam `super().__init__`.
+- `core/map.py` → `Tile.draw(self, surface, x, y, size, offset_x=0, offset_y=0)`
+  e **quantas subclasses** sobrescrevem `draw` (conte-as).
+- `core/map.py` → `Map.get_tile_at(grid_x, grid_y)`, `Map.is_walkable(grid_x, grid_y)`,
+  `Map.update_camera(player_pixel_x, player_pixel_y, dt)`, campos
+  `camera_offset_x` / `camera_offset_y`, e a chamada `tile.draw(...)` em `Map.draw`.
+- `PortalTile` → campos `spawn_x` / `spawn_y` (par de spawn) e onde são lidos.
+- `cenas/campo_de_treino.py` → `player_grid_x` / `player_grid_y`, `_try_move(dx, dy)`,
+  `_detect_region`, uso de `cmap.camera_offset_x/y`, e a montagem de `px, py`
+  antes de `update_camera`.
+- `data/maps_data.py` → onde `spawn_x/spawn_y` de portais são definidos (se houver).
+
+**Entregue como saída da Fase 0:** uma tabela/lista com contagem total de
+assinaturas afetadas e um plano confirmando (ou ajustando) as fases 1–5 abaixo.
+Sinalize qualquer surpresa (outros pares x/y não previstos aqui). **STOP.**
+
+---
+
+## FASE 1 — Núcleo: `GameObject` recebe `Vector2`
+
+**Arquivo:** `core/game_object.py` (+ construtores das subclasses)
+
+Alvo:
+```python
+# ANTES
+def __init__(self, x: float, y: float):
+    self.position = pygame.Vector2(x, y)
+    self.velocity = pygame.Vector2(0.0, 0.0)
+    self.alive = True
+
+# DEPOIS
+def __init__(self, position: pygame.Vector2):
+    self.position = pygame.Vector2(position)   # cópia defensiva
+    self.velocity = pygame.Vector2(0.0, 0.0)
+    self.alive = True
 ```
-meu_jogo/
-  main.py            → só inicializa GameManager + cena inicial. Sem lógica de jogo.
-  core/              → motor: game_manager, scene_manager, game_state, config,
-                       battle, game, map, elements  (+ progression, se criado)
-  cenas/             → telas/renderização (menu, campo_de_treino, battle_scene, ...)
-  entidades/         → character, acoes, ai  (estado + regras, não desenham na tela)
-  data/              → characters_data, maps_data  (SÓ dados, sem lógica complexa)
-  midia/sprites/     → sprite_factory (pixel art), animated_sprite (animações)
-  utils/             → helpers (matemática, desenho, cores, debug)
-  testes/            → protótipos e scripts; não fazem parte do jogo final
+
+Atualizar **na mesma fase** todos os construtores de subclasses de `GameObject`
+e suas chamadas a `super().__init__`. Ex. em `battle_scene.py`:
+```python
+# ANTES
+super().__init__(origin.x, origin.y)
+# DEPOIS
+super().__init__(pygame.Vector2(origin))
+```
+Faça o mesmo para `CharacterObject` e qualquer outra subclasse (use a lista da
+Fase 0). Se algum chamador tiver x/y soltos, monte `pygame.Vector2(x, y)` na
+chamada — a *interface* passa a ser vetorial.
+
+**Verificação:** o jogo inicia, entra em batalha, projétil voa e acerta.
+**STOP.**
+
+---
+
+## FASE 2 — `Tile.draw` vetorial + helper reaproveitável
+
+**Arquivo:** `core/map.py`
+
+### 2.1 Nova interface da base + helper (reduz repetição = ponto de reuso)
+```python
+class Tile:
+    def draw(self, surface, grid_pos: pygame.Vector2, size: int,
+             camera_offset: pygame.Vector2):
+        rect = self._screen_rect(grid_pos, size, camera_offset)
+        ...
+
+    def _screen_rect(self, grid_pos: pygame.Vector2, size: int,
+                     camera_offset: pygame.Vector2) -> pygame.Rect:
+        """Converte posição de grid (lógica) para retângulo em pixels (render)."""
+        return pygame.Rect(
+            int(grid_pos.x * size - camera_offset.x),
+            int(grid_pos.y * size - camera_offset.y),
+            size, size,
+        )
 ```
 
-Regras de camada:
-- `main.py` simples. Nada de batalha/XP/mapas aqui.
-- `core/` controla funcionamento; **não** coloca sprites nem dados de inimigos aqui.
-- `cenas/` desenham; **não** implementam regras de dano/XP.
-- `entidades/` guardam estado e regras; **não** desenham direto na tela.
-- `data/` só definições prontas.
-- `midia/` só código de geração de arte/áudio; assets não viram lógica.
+### 2.2 Migrar TODAS as subclasses que sobrescrevem `draw`
+Para cada override (a lista veio da Fase 0):
+- Trocar a assinatura para
+  `def draw(self, surface, grid_pos, size, camera_offset):`
+- Trocar a primeira linha
+  `rect = pygame.Rect(x * size - offset_x, y * size - offset_y, size, size)`
+  por `rect = self._screen_rect(grid_pos, size, camera_offset)`.
+- Onde o corpo usa `x`/`y` na matemática de animação
+  (ex. `math.sin(t + x*0.6 + y*0.4)`), passar a usar
+  `grid_pos.x` / `grid_pos.y`.
+
+> A interface **pública** tem de ser vetorial. Dentro do corpo, se ajudar a
+> legibilidade da matemática de animação, é permitido um unpack local
+> (`gx, gy = grid_pos.x, grid_pos.y`) — mas **o rect sempre via `_screen_rect`**.
+
+### 2.3 Atualizar o ponto de chamada em `Map.draw`
+```python
+# ANTES
+tile.draw(surface, x, y, ts, self.camera_offset_x, self.camera_offset_y)
+# DEPOIS
+tile.draw(surface, pygame.Vector2(x, y), ts, self._camera_offset)
+```
+(O campo `_camera_offset` é criado na Fase 3; se rodar a Fase 2 isolada,
+monte `pygame.Vector2(self.camera_offset_x, self.camera_offset_y)` aqui e ajuste
+na Fase 3.)
+
+**Verificação:** overworld e salas renderizam idênticos ao atual; tiles
+animados (lava, gelo, cristal) continuam animando. **STOP.**
 
 ---
 
-## CONVENÇÕES DE CÓDIGO
+## FASE 3 — `Map`: offset e coordenadas como `Vector2`
 
-- **Comentários e mensagens em português.**
-- **Constantes de tuning só em `core/config.py`.** Nada de números mágicos espalhados
-  (tamanho da janela, FPS, XP por nível, incrementos por nível, multiplicadores de
-  boss, etc.). Dados puros de personagem/mapa ficam em `data/`.
-- **Reusar antes de reconstruir.** Antes de criar um sistema novo, verifique se já
-  existe. Exemplos reais deste projeto:
-  - XP/nível já existe em `character.py` → wire nele, não crie paralelo.
-  - Cura (`HealAction`) já escala com `max_hp` → não duplicar essa lógica.
-- **Sprites novos seguem o padrão da factory:** matriz 16×16, palette dict, caracteres
-  de 1 letra, `'.'` = transparente. Não invente outro padrão — o professor espera
-  consistência.
-- **Tiles/sprites animados** usam `pygame.time.get_ticks()` para ciclos, ex:
-  `phase = (pygame.time.get_ticks() % 1000) / 1000.0`.
-- **Fallback preservado:** sprites/tiles antigos continuam funcionando se um novo
-  falhar. Nada de remover o caminho antigo sem substituto testado.
+**Arquivo:** `core/map.py`
 
----
+### 3.1 Offset de câmera vira um vetor
+Substituir os campos `camera_offset_x` / `camera_offset_y` por um único
+`self._camera_offset = pygame.Vector2(0.0, 0.0)`. Onde forem lidos hoje
+(`Map.draw`, `campo_de_treino`), usar `.x` / `.y`.
 
-## TRABALHO ATIVO: BUG DA MORTE + PROGRESSÃO + ESCALONAMENTO DE BOSSES
+### 3.2 `update_camera` recebe posição em pixels como vetor
+```python
+# ANTES
+def update_camera(self, player_pixel_x, player_pixel_y, dt=0.016):
+# DEPOIS
+def update_camera(self, player_pixel: pygame.Vector2, dt=0.016):
+```
+Reescrever o corpo usando `player_pixel.x/.y` e atualizar `self._camera_offset`
+com o mesmo lerp atual (`alpha = min(1.0, 8.0 * dt)`).
 
-Workstream em andamento, guiado pelo arquivo `PROMPT_PROGRESSAO_CLAUDE_CODE.md` (5
-fases com gate de confirmação cada uma: Auditoria → Corrigir travamento na morte →
-Progressão do herói → Escalonamento dos bosses → Balanceamento/validação). Quando eu
-pedir para seguir com esse workstream, use aquele prompt como roteiro de fases — as
-regras abaixo são o contexto permanente que sustenta ele.
+### 3.3 `get_tile_at` / `is_walkable` recebem grid como vetor
+```python
+def get_tile_at(self, grid_pos: pygame.Vector2):
+    gx, gy = int(grid_pos.x), int(grid_pos.y)
+    if 0 <= gy < self.height and 0 <= gx < self.width:
+        return self.tile_types.get(self.matrix[gy][gx])
+    return None
 
-**Objetivo do workstream:**
-1. Corrigir o travamento quando o jogador morre (derrota não chega ao GameOverScene).
-2. Herói ganha +1 nível por boss derrotado (vida, ataque, defesa e cura sobem).
-3. O primeiro boss enfrentado é sempre o mais fácil, não importa qual portal o
-   jogador escolher primeiro; cada boss seguinte sobe de nível e fica mais difícil.
-4. Balancear para o herói ficar mais forte sem virar overpower em relação ao boss.
+def is_walkable(self, grid_pos: pygame.Vector2):
+    tile = self.get_tile_at(grid_pos)
+    return tile.is_walkable if tile else False
+```
+Atualizar **todos** os chamadores (loop de tiles em `Map.draw`, indicadores de
+portal e `_try_move` em `campo_de_treino`) para passar `pygame.Vector2(...)`.
 
-**Fatos já mapeados no código (não redescobrir — só confirmar na Fase 0):**
-- Sistema de XP/nível **já existe** em `entidades/character.py` (`level`, `xp`,
-  `gain_xp()`, `level_up()`), usando `XP_PER_LEVEL`, `HP_LEVEL_INCREMENT`,
-  `DAMAGE_LEVEL_INCREMENT`, `DEFENSE_LEVEL_INCREMENT` de `core/config.py`.
-  `level_up()` já restaura HP cheio e dispara `on_level_up` (registrado em `main.py`
-  com notificação + SFX). **Reusar — não criar sistema paralelo.**
-- `entidades/acoes.py`: Especial = dano ×1.8 (3 usos), Defender = 50% de redução
-  (2 usos), Curar = 30% do `max_hp` (2 usos) — a cura **já escala sozinha** quando
-  `max_hp` cresce por nível.
-- `data/characters_data.py`: bosses hoje são **singletons de módulo** com dificuldade
-  fixa por elemento (Hydra 100/16/4 → Magma Titan 160/28/8) + helper `reset_boss()`.
-  Isso conflita com o mundo aberto: escolher o portal do Magma Titan primeiro dá de
-  cara com o boss mais forte.
-- Herói base em `main.py`: 120 HP / 20 dano / 5 defesa, elemento Fire, fraqueza Water.
-- `cenas/battle_scene.py`: bloco "animação de morte antes de finalizar batalha"
-  (`_death_started`, `finished`) — provável origem do travamento na morte do jogador.
-- `core/game.py` mantém `defeated_bosses: set` — fonte de verdade da progressão.
-- `ScoreSystem.finalizar_batalha()` só é chamado em vitória e usa `enemy.is_boss`.
+### 3.4 (Opcional, se houver) `PortalTile.spawn_x/spawn_y` → `spawn_pos: Vector2`
+Se a Fase 0 confirmar spawns em x/y soltos, agrupe em `spawn_pos` e ajuste
+`maps_data.py` e o `request_map_change`.
 
-**Regras específicas deste workstream:**
-- Progressão aplicada na **criação/preparação dos personagens**, nunca dentro do
-  fluxo de turnos (`core/battle.py`/`BattleScene` — turn-flow será refatorado à
-  parte; não engordar essa área agora).
-- Progressão é **por partida** (runtime); não alterar o formato do save.
-- Arquivos novos permitidos neste workstream: `core/progression.py` e
-  `meu_jogo/testes/balance_report.py`. Nada além disso sem combinar.
+**Verificação:** câmera segue o herói suavemente; pisar em tiles funciona;
+portais teleportam. **STOP.**
 
 ---
 
-## ARMADILHAS CONHECIDAS DESTE PROJETO
+## FASE 4 — `CampoDeTreinoScene`: posição e delta como `Vector2`
 
-- **Bosses como singletons de módulo** (`data/characters_data.py`) têm stats fixos por
-  elemento e mutáveis — vazam estado entre lutas e quebram o escalonamento por ordem
-  de enfrentamento. Quando o design pedir dificuldade progressiva, crie **instância
-  nova por batalha**, nunca reutilize o singleton.
-- **`Character.take_damage` não faz clamp** — `self.hp -= real_damage` pode deixar HP
-  negativo. Ao mexer em dano/morte, garanta `hp = max(hp - real_damage, 0)` mantendo
-  o retorno de `real_damage` inalterado (o ScoreSystem depende dele).
-- **Fluxo de morte na BattleScene** pode travar se o personagem não tiver animação de
-  morte registrada (espera infinita por `is_finished`). Bloqueios de animação
-  precisam de timeout de segurança (~1.5–2.0s).
-- **`defeated_bosses` (set) em `core/game.py` é a fonte de verdade** da progressão do
-  mundo aberto. Nível do herói e nível do boss devem derivar dela — não crie
-  contadores paralelos.
-- **`ScoreSystem` depende de `enemy.is_boss`** e do valor de retorno de `take_damage`.
-  Não altere essas assinaturas sem avisar.
+**Arquivo:** `cenas/campo_de_treino.py`
 
----
+- `player_grid_x` / `player_grid_y` → um único `self.player_grid = pygame.Vector2(14, 14)`.
+- `_try_move(self, dx, dy)` → `_try_move(self, delta: pygame.Vector2)`; internamente
+  `nova = self.player_grid + delta` e checar `is_walkable(nova)`.
+- No `update`, os `if keys[...]` montam um `delta = pygame.Vector2(...)` em vez de
+  `dx, dy` soltos.
+- `_detect_region` usa `(int(self.player_grid.x), int(self.player_grid.y))` na
+  lookup `_REGION_LOOKUP`.
+- Antes de `update_camera`, montar
+  `pixel = self.player_grid * TILE_SIZE + pygame.Vector2(TILE_SIZE/2, TILE_SIZE/2)`
+  e chamar `update_camera(pixel, dt)`.
+- Indicadores de portal: usar `self.player_grid.x/.y` e `cmap._camera_offset`.
 
-## NÃO QUEBRAR
-
-- AudioManager, ScoreSystem, SaveSystem, Smart AI.
-- As 4 ações do menu de batalha.
-- Fluxo Menu → Overworld → Batalha → GameOver/Victory.
-- Formato do JSON do save (progressão de nível é por partida/runtime; não persista
-  no save sem me pedir).
+**Verificação:** movimento nas 4 direções, animação/flip do herói, notificação de
+região e indicador de portal — tudo igual ao atual. **STOP.**
 
 ---
 
-## GIT / ENTREGA
+## FASE 5 — Varredura final e conformidade
 
-- Commits pequenos e frequentes (mínimo 1 por semana), mensagens claras em português
-  descrevendo a mudança real. Nada de commit "falso".
-- Ao concluir uma fase aprovada, sugira uma mensagem de commit; **eu** faço o commit.
+- `grep` por `offset_x`, `offset_y`, `grid_x`, `grid_y`, `player_pixel_x`,
+  `_x,` `_y` remanescentes em interfaces públicas. Não deve sobrar par
+  geométrico separado em assinatura.
+- Confirmar que nenhum método base ficou com assinatura diferente das filhas.
+- Rodar o fluxo completo: Menu → Overworld → cada um dos 4 portais → Batalha →
+  Vitória/GameOver. Sem regressões.
+- Resumo final (curto) do que mudou, por arquivo, para eu colar no relatório do
+  professor mostrando conformidade com o quesito de vetores. **STOP.**
 
 ---
 
-## RESUMO DE UMA LINHA
+## Nota de conformidade (para o relatório)
 
-Faça uma fase por vez, edite cirurgicamente, mantenha OO limpo e dt-based, centralize
-tuning no config, reuse o que já existe, e pare para eu confirmar antes de seguir.
+Após esta refatoração, o projeto atende ao quesito do enunciado em dois pontos:
+1. **Agrupamento x/y:** toda interface geométrica usa `pygame.Vector2` (posição,
+   velocidade, offset de câmera, grid, delta, spawn) — nenhum par x/y solto.
+2. **Ponto flutuante:** `Vector2` armazena componentes float; inteiros só no
+   acesso à matriz (índice), não no armazenamento de posição.
+E a física já seguia `posição += velocidade * dt` em `GameObject.apply_physics`.

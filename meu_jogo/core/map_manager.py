@@ -5,7 +5,6 @@ as trocas de mapa solicitadas por portais.
 
 import pygame
 
-from meu_jogo.core.config import TILE_SIZE
 from meu_jogo.core.map import Map
 
 
@@ -32,19 +31,13 @@ class MapManager:
         self.current_map      = self.maps_cache[map_name]
         self.current_map_name = map_name
 
-    def request_map_change(self, dest, spawn_x, spawn_y):
-        self.pending_map_change = (dest, spawn_x, spawn_y)
+    def request_map_change(self, dest, spawn_pos: pygame.Vector2):
+        self.pending_map_change = (dest, spawn_pos)
 
     def process_map_change(self, player):
         if self.pending_map_change:
-            dest, sx, sy = self.pending_map_change
+            dest, _spawn_pos = self.pending_map_change
             self.load_map(dest)
-            player.grid_x       = sx
-            player.grid_y       = sy
-            player.pixel_x      = sx * TILE_SIZE
-            player.pixel_y      = sy * TILE_SIZE
-            player.target_pixel_x = player.pixel_x
-            player.target_pixel_y = player.pixel_y
             self.pending_map_change = None
             return True
         return False

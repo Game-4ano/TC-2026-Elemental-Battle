@@ -8,8 +8,8 @@ class GameObject(ABC):
     Usa pygame.Vector2 para posição e velocidade (física real com dt).
     """
 
-    def __init__(self, x: float, y: float):
-        self.position = pygame.Vector2(x, y)
+    def __init__(self, position: pygame.Vector2):
+        self.position = pygame.Vector2(position)   # cópia defensiva
         self.velocity = pygame.Vector2(0.0, 0.0)
         self.alive = True
 

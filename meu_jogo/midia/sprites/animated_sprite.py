@@ -10,8 +10,8 @@ USO:
     anim = AnimatedSprite("hero_walk", scale=3, fps=8)
 
     # No loop principal:
-    anim.update(dt)          # avança o timer
-    anim.draw(screen, x, y)  # desenha o frame atual
+    anim.update(dt)        # avança o timer
+    anim.draw(screen, pos)  # desenha o frame atual (pos: pygame.Vector2)
 
     # Para espelhar horizontalmente (ex: andar para a esquerda):
     anim.flipped = True
@@ -97,11 +97,11 @@ class AnimatedSprite:
         return self._frames[0].get_height() if self._frames else 0
 
     # ------------------------------------------------------------------
-    def draw(self, screen: pygame.Surface, x: int, y: int):
-        """Desenha o frame atual em (x, y) — canto superior esquerdo."""
+    def draw(self, screen: pygame.Surface, pos: pygame.Vector2):
+        """Desenha o frame atual em pos — canto superior esquerdo."""
         frame = self.current_frame
         if frame:
-            screen.blit(frame, (x, y))
+            screen.blit(frame, (int(pos.x), int(pos.y)))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -127,7 +127,7 @@ class AnimationController:
     }, scale=3)
     ctrl.play("walk_side")
     ctrl.update(dt)
-    ctrl.draw(screen, x, y)
+    ctrl.draw(screen, pos)
     """
 
     def __init__(self, states: dict, scale: int = 3, flipped: bool = False):
@@ -164,9 +164,9 @@ class AnimationController:
         if self._current:
             self._current.update(dt)
 
-    def draw(self, screen: pygame.Surface, x: int, y: int):
+    def draw(self, screen: pygame.Surface, pos: pygame.Vector2):
         if self._current:
-            self._current.draw(screen, x, y)
+            self._current.draw(screen, pos)
 
     def reset(self):
         if self._current:

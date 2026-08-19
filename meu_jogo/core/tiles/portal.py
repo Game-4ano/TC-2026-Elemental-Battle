@@ -8,20 +8,19 @@ from meu_jogo.core.tiles.base import Tile
 
 
 class PortalTile(Tile):
-    def __init__(self, name, color, destination_map_name, spawn_x, spawn_y):
+    def __init__(self, name, color, destination_map_name, spawn_pos: pygame.Vector2):
         super().__init__(name, "None", color, True, 0)
         self.destination_map_name = destination_map_name
-        self.spawn_x = spawn_x
-        self.spawn_y = spawn_y
+        self.spawn_pos = spawn_pos
 
     def on_step(self, player, map_manager):
         if map_manager:
             map_manager.request_map_change(
-                self.destination_map_name, self.spawn_x, self.spawn_y
+                self.destination_map_name, self.spawn_pos
             )
 
-    def draw(self, surface, x, y, size, offset_x=0, offset_y=0):
-        rect = pygame.Rect(x * size - int(offset_x), y * size - int(offset_y), size, size)
+    def draw(self, surface, grid_pos, size, camera_offset):
+        rect = self._screen_rect(grid_pos, size, camera_offset)
         dark = tuple(max(c - 60, 0) for c in self.color)
         pygame.draw.rect(surface, dark, rect)
 

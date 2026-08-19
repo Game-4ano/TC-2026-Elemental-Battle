@@ -100,13 +100,13 @@ GLOBAL_TILE_TYPES = {
     "v": MetalTile(),
     "o": LightningCrystalTile(),
     # Portais
-    "W": PortalTile("Portal Vento",    (120, 190, 230), "SALA_BATALHA_VENTO",    1, 1),
-    "A": PortalTile("Portal Água",     ( 20, 100, 220), "SALA_BATALHA_AGUA",     1, 1),
-    "E": PortalTile("Portal Elétrico", (200, 180,   0), "SALA_BATALHA_ELETRICA", 1, 1),
-    "F": PortalTile("Portal Fogo",     (220,  60,   0), "SALA_BATALHA_FOGO",     1, 1),
-    "O": PortalTile("Saída",           ( 50, 210, 100), "MUNDO_ABERTO",         20, 14),
-    "^": PortalTile("Portal Sombra",   (140,  50, 200), "SALA_BATALHA_SOMBRA",   1,  1),
-    "%": PortalTile("Portal Planta",   ( 60, 200,  60), "SALA_BATALHA_PLANTA",   1,  1),
+    "W": PortalTile("Portal Vento",    (120, 190, 230), "SALA_BATALHA_VENTO",    pygame.Vector2(1, 1)),
+    "A": PortalTile("Portal Água",     ( 20, 100, 220), "SALA_BATALHA_AGUA",     pygame.Vector2(1, 1)),
+    "E": PortalTile("Portal Elétrico", (200, 180,   0), "SALA_BATALHA_ELETRICA", pygame.Vector2(1, 1)),
+    "F": PortalTile("Portal Fogo",     (220,  60,   0), "SALA_BATALHA_FOGO",     pygame.Vector2(1, 1)),
+    "O": PortalTile("Saída",           ( 50, 210, 100), "MUNDO_ABERTO",         pygame.Vector2(20, 14)),
+    "^": PortalTile("Portal Sombra",   (140,  50, 200), "SALA_BATALHA_SOMBRA",   pygame.Vector2(1, 1)),
+    "%": PortalTile("Portal Planta",   ( 60, 200,  60), "SALA_BATALHA_PLANTA",   pygame.Vector2(1, 1)),
     # Degrade Vazio Sombrio -> Ceu dos Ventos (3 colunas de transicao)
     "1": TwilightTile(0.25),
     "2": TwilightTile(0.5),
@@ -219,7 +219,7 @@ WATER_ROOM_TILES_BATTLE = {
     "P":  WaterTile(name="Poça Brilhante", color=(60, 140, 220), damage=0),
     "st": IceStalactiteTile(),
     "bb": BubbleTile(),
-    "O":  PortalTile("Saída", (50, 210, 100), "MUNDO_ABERTO", 2, 14),
+    "O":  PortalTile("Saída", (50, 210, 100), "MUNDO_ABERTO", pygame.Vector2(2, 14)),
 }
 _agua_raw = build_themed_room("A", "X", _AGUA_DECO, 1, 6)
 SALA_BATALHA_AGUA_MATRIX = _agua_raw
@@ -248,7 +248,7 @@ FIRE_ROOM_TILES_BATTLE = {
     "H":  HotRockTile(),
     "K":  EmberTile(),
     "ld": LavaDropTile(),
-    "O":  PortalTile("Saída", (50, 210, 100), "MUNDO_ABERTO", 35, 14),
+    "O":  PortalTile("Saída", (50, 210, 100), "MUNDO_ABERTO", pygame.Vector2(35, 14)),
 }
 _fogo_raw = build_themed_room("V", "X", _FOGO_DECO, 8, 6)
 SALA_BATALHA_FOGO_MATRIX = _fogo_raw
@@ -277,7 +277,7 @@ WIND_ROOM_TILES_BATTLE = {
     "K": SkyVoidTile(),
     "Z": SkyPathTile(),
     "N": FeatherTile(),
-    "O": PortalTile("Saída", (50, 210, 100), "MUNDO_ABERTO", 20, 2),  # col20, row2 — abaixo do portal Vento
+    "O": PortalTile("Saída", (50, 210, 100), "MUNDO_ABERTO", pygame.Vector2(20, 2)),  # col20, row2 — abaixo do portal Vento
 }
 _vento_raw = build_themed_room("S", "X", _VENTO_DECO, 1, 6)
 SALA_BATALHA_VENTO_MATRIX = _vento_raw
@@ -308,7 +308,7 @@ ELEC_ROOM_TILES_BATTLE = {
     "v":  MetalTile(),
     "cf": CircuitFloorTile(),
     "nb": NeonBorderTile(),
-    "O":  PortalTile("Saída", (50, 210, 100), "MUNDO_ABERTO", 20, 25),
+    "O":  PortalTile("Saída", (50, 210, 100), "MUNDO_ABERTO", pygame.Vector2(20, 25)),
 }
 _elec_raw = build_themed_room("M", "X", _ELEC_DECO, 8, 6)
 SALA_BATALHA_ELETRICA_MATRIX = _elec_raw
@@ -330,7 +330,7 @@ SHADOW_ROOM_TILES_BATTLE = {
     "v": VoidFloorTile(),
     "c": ShadowCrystalTile(),
     "m": DarkMistTile(),
-    "O": PortalTile("Saída", (50, 210, 100), "MUNDO_ABERTO", 5, 4),
+    "O": PortalTile("Saída", (50, 210, 100), "MUNDO_ABERTO", pygame.Vector2(5, 4)),
 }
 _sombra_raw = build_themed_room("v", "X", _SOMBRA_DECO, 8, 6)
 SALA_BATALHA_SOMBRA_MATRIX = _sombra_raw
@@ -356,7 +356,7 @@ GRASS_ROOM_TILES_BATTLE = {
     "T": TreeTile(),
     "b": BushTile(),
     "g": FlowerGrassTile(),
-    "O": PortalTile("Saída", (50, 210, 100), "MUNDO_ABERTO", 15, 15),
+    "O": PortalTile("Saída", (50, 210, 100), "MUNDO_ABERTO", pygame.Vector2(15, 15)),
 }
 _grama_raw = build_themed_room("V", "X", _GRAMA_DECO, 8, 6)
 SALA_BATALHA_PLANTA_MATRIX = _grama_raw

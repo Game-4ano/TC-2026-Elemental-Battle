@@ -12,7 +12,7 @@ class Projectile(GameObject):
     RADIUS = 10
 
     def __init__(self, origin, target_obj, element, on_hit_callback):
-        super().__init__(origin.x, origin.y)
+        super().__init__(origin)
         self.target_obj = target_obj
         self.element    = element
         self.on_hit     = on_hit_callback

@@ -35,8 +35,8 @@ class CharacterObject(GameObject):
     HURT   = "hurt"
     DYING  = "dying"
 
-    def __init__(self, character, x, y, fallback_color, facing_right):
-        super().__init__(x, y)
+    def __init__(self, character, position, fallback_color, facing_right):
+        super().__init__(position)
         self.character      = character
         self.fallback_color = fallback_color
         self.facing_right   = facing_right

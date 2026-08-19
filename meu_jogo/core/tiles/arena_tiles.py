@@ -11,14 +11,15 @@ class IceArenaTile(Tile):
     def __init__(self):
         super().__init__("Arena de Gelo", "Water", (160, 210, 240), True, 0)
 
-    def draw(self, surface, x, y, size, offset_x=0, offset_y=0):
-        rect = pygame.Rect(x * size - offset_x, y * size - offset_y, size, size)
+    def draw(self, surface, grid_pos, size, camera_offset):
+        rect = self._screen_rect(grid_pos, size, camera_offset)
         pygame.draw.rect(surface, self.color, rect)
         t = pygame.time.get_ticks() / 1000.0
-        alpha = int(30 + 20 * math.sin(t * 1.5 + x * 0.6 + y * 0.4))
+        gx, gy = int(grid_pos.x), int(grid_pos.y)
+        alpha = int(30 + 20 * math.sin(t * 1.5 + gx * 0.6 + gy * 0.4))
         pygame.draw.rect(surface, (200, 240, 255), rect.inflate(-alpha // 3, -alpha // 3), 1)
         # Reflexo deslizante azul-claro
-        phase = (t * 0.4 + x * 0.12 + y * 0.07) % 1.0
+        phase = (t * 0.4 + gx * 0.12 + gy * 0.07) % 1.0
         if phase < 0.3:
             a = int(70 * (1.0 - phase / 0.3))
             rs = pygame.Surface((size, 2), pygame.SRCALPHA)
@@ -31,17 +32,18 @@ class VolcanoFloorTile(Tile):
     def __init__(self):
         super().__init__("Chão Vulcânico", "Fire", (40, 25, 15), True, 0)
 
-    def draw(self, surface, x, y, size, offset_x=0, offset_y=0):
-        rect = pygame.Rect(x * size - offset_x, y * size - offset_y, size, size)
+    def draw(self, surface, grid_pos, size, camera_offset):
+        rect = self._screen_rect(grid_pos, size, camera_offset)
         pygame.draw.rect(surface, self.color, rect)
         t = pygame.time.get_ticks() / 1000.0
+        gx, gy = int(grid_pos.x), int(grid_pos.y)
         for i in range(3):
-            cx2 = rect.x + (i * 8 + x * 5) % (size - 4) + 2
-            cy2 = rect.y + (i * 6 + y * 4) % (size - 4) + 2
-            glow = int(80 + 80 * abs(math.sin(t * 2.0 + i + x * 0.3)))
+            cx2 = rect.x + (i * 8 + gx * 5) % (size - 4) + 2
+            cy2 = rect.y + (i * 6 + gy * 4) % (size - 4) + 2
+            glow = int(80 + 80 * abs(math.sin(t * 2.0 + i + gx * 0.3)))
             pygame.draw.line(surface, (glow, glow // 3, 0), (cx2, cy2), (cx2 + 5, cy2 + 3), 1)
         # Overlay de calor pulsante laranja
-        heat = int(22 + 20 * abs(math.sin(t * 1.8 + x * 0.2 + y * 0.3)))
+        heat = int(22 + 20 * abs(math.sin(t * 1.8 + gx * 0.2 + gy * 0.3)))
         hs = pygame.Surface((size, size), pygame.SRCALPHA)
         hs.fill((210, 80, 0, heat))
         surface.blit(hs, rect.topleft)
@@ -52,14 +54,15 @@ class SkyArenaTile(Tile):
     def __init__(self):
         super().__init__("Arena Celeste", "Air", (195, 215, 240), True, 0)
 
-    def draw(self, surface, x, y, size, offset_x=0, offset_y=0):
-        rect = pygame.Rect(x * size - offset_x, y * size - offset_y, size, size)
+    def draw(self, surface, grid_pos, size, camera_offset):
+        rect = self._screen_rect(grid_pos, size, camera_offset)
         pygame.draw.rect(surface, self.color, rect)
         t = pygame.time.get_ticks() / 1000.0
-        glow = int(200 + 55 * abs(math.sin(t * 0.8 + x * 0.4)))
+        gx, gy = int(grid_pos.x), int(grid_pos.y)
+        glow = int(200 + 55 * abs(math.sin(t * 0.8 + gx * 0.4)))
         pygame.draw.rect(surface, (glow, glow, 255), rect.inflate(-6, -6), 2)
         # Névoa de nuvem passando horizontalmente
-        wisp_phase = (t * 0.5 + x * 0.18 + y * 0.09) % 1.0
+        wisp_phase = (t * 0.5 + gx * 0.18 + gy * 0.09) % 1.0
         if wisp_phase < 0.35:
             wa = int(30 * (1.0 - wisp_phase / 0.35))
             ws = pygame.Surface((size, 3), pygame.SRCALPHA)
@@ -72,14 +75,15 @@ class ForestArenaTile(Tile):
     def __init__(self):
         super().__init__("Arena Ancestral", "Grass", (30, 70, 25), True, 0)
 
-    def draw(self, surface, x, y, size, offset_x=0, offset_y=0):
-        rect = pygame.Rect(x * size - offset_x, y * size - offset_y, size, size)
+    def draw(self, surface, grid_pos, size, camera_offset):
+        rect = self._screen_rect(grid_pos, size, camera_offset)
         pygame.draw.rect(surface, self.color, rect)
         t = pygame.time.get_ticks() / 1000.0
-        glow = int(60 + 40 * abs(math.sin(t * 1.4 + x * 0.4 + y * 0.3)))
+        gx, gy = int(grid_pos.x), int(grid_pos.y)
+        glow = int(60 + 40 * abs(math.sin(t * 1.4 + gx * 0.4 + gy * 0.3)))
         pygame.draw.circle(surface, (60, glow + 90, 50), rect.center, size // 5, 1)
         # Vinha pulsando na borda inferior
-        vine_phase = (t * 0.5 + x * 0.2 + y * 0.15) % 1.0
+        vine_phase = (t * 0.5 + gx * 0.2 + gy * 0.15) % 1.0
         if vine_phase < 0.3:
             va = int(70 * (1.0 - vine_phase / 0.3))
             vs = pygame.Surface((size, 2), pygame.SRCALPHA)
@@ -92,11 +96,12 @@ class MetalArenaTile(Tile):
     def __init__(self):
         super().__init__("Arena Metálica", "Electric", (120, 130, 150), True, 0)
 
-    def draw(self, surface, x, y, size, offset_x=0, offset_y=0):
-        rect = pygame.Rect(x * size - offset_x, y * size - offset_y, size, size)
+    def draw(self, surface, grid_pos, size, camera_offset):
+        rect = self._screen_rect(grid_pos, size, camera_offset)
         pygame.draw.rect(surface, self.color, rect)
         t = pygame.time.get_ticks() / 1000.0
-        glow = int(50 + 50 * abs(math.sin(t * 2.0 + x * 0.5 + y * 0.3)))
+        gx, gy = int(grid_pos.x), int(grid_pos.y)
+        glow = int(50 + 50 * abs(math.sin(t * 2.0 + gx * 0.5 + gy * 0.3)))
         pygame.draw.rect(surface, (80, 100, 130 + glow // 3), rect.inflate(-4, -4), 1)
         cx2, cy2 = rect.centerx, rect.centery
         hs = size // 4
@@ -105,7 +110,7 @@ class MetalArenaTile(Tile):
         # Raio horizontal: todos os tiles do mesmo y piscam juntos (~a cada 3.5s)
         active_row = int(t / 3.5) % 8 + 1
         in_flash   = (t % 3.5) < 0.08
-        if y == active_row and in_flash:
+        if gy == active_row and in_flash:
             fs = pygame.Surface((size, 2), pygame.SRCALPHA)
             fs.fill((220, 235, 255, 200))
             surface.blit(fs, (rect.x, rect.centery - 1))

@@ -34,29 +34,28 @@ class Map(Stage):
         self.tile_size   = tile_size
         self.width       = len(tile_matrix[0]) if tile_matrix else 0
         self.height      = len(tile_matrix)
-        self.camera_offset_x = 0.0
-        self.camera_offset_y = 0.0
+        self._camera_offset = pygame.Vector2(0.0, 0.0)
         self.bg_image    = bg_image   # pygame.Surface opcional
 
-    def get_tile_at(self, grid_x, grid_y):
-        if 0 <= grid_y < self.height and 0 <= grid_x < self.width:
-            return self.tile_types.get(self.matrix[grid_y][grid_x])
+    def get_tile_at(self, grid_pos: pygame.Vector2):
+        gx, gy = int(grid_pos.x), int(grid_pos.y)
+        if 0 <= gy < self.height and 0 <= gx < self.width:
+            return self.tile_types.get(self.matrix[gy][gx])
         return None
 
-    def is_walkable(self, grid_x, grid_y):
-        tile = self.get_tile_at(grid_x, grid_y)
+    def is_walkable(self, grid_pos: pygame.Vector2):
+        tile = self.get_tile_at(grid_pos)
         return tile.is_walkable if tile else False
 
-    def update_camera(self, player_pixel_x, player_pixel_y, dt=0.016):
-        target_x = float(player_pixel_x - SCREEN_WIDTH  // 2)
-        target_y = float(player_pixel_y - SCREEN_HEIGHT // 2)
+    def update_camera(self, player_pixel: pygame.Vector2, dt=0.016):
         max_x = max(0.0, self.width  * self.tile_size - SCREEN_WIDTH)
         max_y = max(0.0, self.height * self.tile_size - SCREEN_HEIGHT)
-        target_x = max(0.0, min(target_x, max_x))
-        target_y = max(0.0, min(target_y, max_y))
+        target = pygame.Vector2(
+            max(0.0, min(player_pixel.x - SCREEN_WIDTH  // 2, max_x)),
+            max(0.0, min(player_pixel.y - SCREEN_HEIGHT // 2, max_y)),
+        )
         alpha = min(1.0, 8.0 * dt)
-        self.camera_offset_x += (target_x - self.camera_offset_x) * alpha
-        self.camera_offset_y += (target_y - self.camera_offset_y) * alpha
+        self._camera_offset += (target - self._camera_offset) * alpha
 
     def draw(self, surface: pygame.Surface):
         if self.bg_image:
@@ -67,8 +66,8 @@ class Map(Stage):
 
         # Renderizar só tiles visíveis na câmera
         ts  = self.tile_size
-        ox  = int(self.camera_offset_x)
-        oy  = int(self.camera_offset_y)
+        ox  = int(self._camera_offset.x)
+        oy  = int(self._camera_offset.y)
         x0  = max(0, ox // ts)
         y0  = max(0, oy // ts)
         x1  = min(self.width,  x0 + SCREEN_WIDTH  // ts + 2)
@@ -76,7 +75,7 @@ class Map(Stage):
 
         for y in range(y0, y1):
             for x in range(x0, x1):
-                tile = self.get_tile_at(x, y)
+                grid_pos = pygame.Vector2(x, y)
+                tile = self.get_tile_at(grid_pos)
                 if tile:
-                    tile.draw(surface, x, y, ts,
-                              self.camera_offset_x, self.camera_offset_y)
+                    tile.draw(surface, grid_pos, ts, self._camera_offset)

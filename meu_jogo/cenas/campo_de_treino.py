@@ -57,17 +57,15 @@ class CampoDeTreinoScene(GameScene):
         self.font     = pygame.font.SysFont(None, 22)
         self.font_big = pygame.font.SysFont(None, 28)
 
-        self.player_grid_x = 14
-        self.player_grid_y = 14
+        self.player_grid = pygame.Vector2(14, 14)
 
         self._facing_left   = False
 
         # Posicao visual (pixels, float) — desliza suavemente entre tiles,
         # desacoplada da posicao logica (grid) usada para colisao/portais.
-        self._visual_x = float(self.player_grid_x * TILE_SIZE)
-        self._visual_y = float(self.player_grid_y * TILE_SIZE)
+        self._visual_pos = self.player_grid * TILE_SIZE
         self._glide_active = False
-        self._glide_target  = pygame.Vector2(self._visual_x, self._visual_y)
+        self._glide_target  = pygame.Vector2(self._visual_pos)
 
         self._hero_ctrl = AnimationController({
             "idle":       {"anim_key": "hero_idle",       "fps": 1.8, "loop": True},
@@ -88,19 +86,18 @@ class CampoDeTreinoScene(GameScene):
     def handle_event(self, event: pygame.event.Event):
         pass
 
-    def _try_move(self, dx: int, dy: int):
+    def _try_move(self, delta: pygame.Vector2):
         if self._glide_active:
             return
-        nx = self.player_grid_x + dx
-        ny = self.player_grid_y + dy
+        nova = self.player_grid + delta
         cmap = self.manager.map_manager.current_map
-        if not cmap.is_walkable(nx, ny):
+        if not cmap.is_walkable(nova):
             return
-        self.player_grid_x, self.player_grid_y = nx, ny
-        self._glide_target = pygame.Vector2(nx * TILE_SIZE, ny * TILE_SIZE)
+        self.player_grid = nova
+        self._glide_target = nova * TILE_SIZE
         self._glide_active = True
         self.manager.audio.play_sfx("step", volume=0.35)
-        tile = cmap.get_tile_at(nx, ny)
+        tile = cmap.get_tile_at(nova)
         if isinstance(tile, PortalTile):
             self._enter_portal(tile)
         elif tile:
@@ -137,47 +134,44 @@ class CampoDeTreinoScene(GameScene):
             )
         else:
             self.manager.audio.play_sfx("portal")
-            self.manager.map_manager.request_map_change(
-                dest, tile.spawn_x, tile.spawn_y
-            )
+            self.manager.map_manager.request_map_change(dest, tile.spawn_pos)
 
     # -----------------------------------------------------------------------
     def _detect_region(self) -> str | None:
-        return _REGION_LOOKUP.get((self.player_grid_x, self.player_grid_y))
+        return _REGION_LOOKUP.get((int(self.player_grid.x), int(self.player_grid.y)))
 
     def update(self, dt: float):
         keys = pygame.key.get_pressed()
-        dx, dy, moving = 0, 0, False
+        delta  = pygame.Vector2(0, 0)
+        moving = False
 
         if keys[pygame.K_LEFT]:
-            dx, self._facing_left, moving = -1, True, True
+            delta.x, self._facing_left, moving = -1, True, True
         elif keys[pygame.K_RIGHT]:
-            dx, self._facing_left, moving =  1, False, True
+            delta.x, self._facing_left, moving =  1, False, True
         elif keys[pygame.K_UP]:
-            dy, moving = -1, True
+            delta.y, moving = -1, True
         elif keys[pygame.K_DOWN]:
-            dy, moving =  1, True
+            delta.y, moving =  1, True
 
         if moving and not self._glide_active:
-            self._try_move(dx, dy)
+            self._try_move(delta)
 
         if self._glide_active:
-            cur       = pygame.Vector2(self._visual_x, self._visual_y)
-            remaining = self._glide_target - cur
+            remaining = self._glide_target - self._visual_pos
             dist      = remaining.length()
             step      = self.MOVE_SPEED * dt
             if step >= dist or dist < 0.5:
-                cur = pygame.Vector2(self._glide_target)
+                self._visual_pos = pygame.Vector2(self._glide_target)
                 self._glide_active = False
             else:
-                cur += remaining.normalize() * step
-            self._visual_x, self._visual_y = cur.x, cur.y
+                self._visual_pos += remaining.normalize() * step
 
         self._hero_ctrl.flipped = self._facing_left
         if moving:
-            if dy < 0:
+            if delta.y < 0:
                 self._hero_ctrl.play("walk_back")
-            elif dy > 0:
+            elif delta.y > 0:
                 self._hero_ctrl.play("walk_front")
             else:
                 self._hero_ctrl.play("walk_side")
@@ -199,9 +193,8 @@ class CampoDeTreinoScene(GameScene):
             self._current_region = new_region
 
         # Câmera suave (lerp embutido no update_camera)
-        px = self._visual_x + TILE_SIZE // 2
-        py = self._visual_y + TILE_SIZE // 2
-        self.manager.map_manager.current_map.update_camera(px, py, dt)
+        player_pixel = self._visual_pos + pygame.Vector2(TILE_SIZE // 2, TILE_SIZE // 2)
+        self.manager.map_manager.current_map.update_camera(player_pixel, dt)
 
     # -----------------------------------------------------------------------
     # Helpers de desenho
@@ -228,16 +221,16 @@ class CampoDeTreinoScene(GameScene):
 
     def _draw_portal_indicators(self, screen: pygame.Surface, cmap):
         t  = pygame.time.get_ticks() / 1000.0
-        px, py = self.player_grid_x, self.player_grid_y
+        px, py = int(self.player_grid.x), int(self.player_grid.y)
 
         for dy in range(-2, 3):
             for dx in range(-2, 3):
                 nx, ny = px + dx, py + dy
-                tile   = cmap.get_tile_at(nx, ny)
+                tile   = cmap.get_tile_at(pygame.Vector2(nx, ny))
                 if not isinstance(tile, PortalTile):
                     continue
-                sx = int(nx * TILE_SIZE - cmap.camera_offset_x + TILE_SIZE // 2)
-                sy = int(ny * TILE_SIZE - cmap.camera_offset_y + TILE_SIZE // 2)
+                sx = int(nx * TILE_SIZE - cmap._camera_offset.x + TILE_SIZE // 2)
+                sy = int(ny * TILE_SIZE - cmap._camera_offset.y + TILE_SIZE // 2)
 
                 pulse  = abs(math.sin(t * 3.5))
                 r      = int(TILE_SIZE // 2 + 4 + pulse * 6)
@@ -329,8 +322,8 @@ class CampoDeTreinoScene(GameScene):
         if self.manager.map_manager.current_map_name == "SALA_BATALHA_ELETRICA":
             self._draw_lightning_flash(screen)
 
-        sx = int(self._visual_x - cmap.camera_offset_x)
-        sy = int(self._visual_y - cmap.camera_offset_y)
+        sx = int(self._visual_pos.x - cmap._camera_offset.x)
+        sy = int(self._visual_pos.y - cmap._camera_offset.y)
 
         self._draw_hero_shadow(screen, sx, sy)
 
@@ -340,7 +333,7 @@ class CampoDeTreinoScene(GameScene):
         draw_y   = sy + (TILE_SIZE - sprite_h) // 2
 
         if sprite_w > 0:
-            self._hero_ctrl.draw(screen, draw_x, draw_y)
+            self._hero_ctrl.draw(screen, pygame.Vector2(draw_x, draw_y))
         else:
             pygame.draw.rect(screen, (220, 70, 70),
                 (sx + 3, sy + 3, TILE_SIZE - 6, TILE_SIZE - 6), border_radius=6)

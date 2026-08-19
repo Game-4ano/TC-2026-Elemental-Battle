@@ -26,7 +26,16 @@ class Tile:
         if self.damage_on_step > 0:
             player.take_damage(self.damage_on_step)
 
-    def _try_draw_sprite(self, surface, x, y, size, offset_x, offset_y) -> bool:
+    def _screen_rect(self, grid_pos: pygame.Vector2, size: int,
+                     camera_offset: pygame.Vector2) -> pygame.Rect:
+        """Converte posição de grid (lógica) para retângulo em pixels (render)."""
+        return pygame.Rect(
+            int(grid_pos.x * size - camera_offset.x),
+            int(grid_pos.y * size - camera_offset.y),
+            size, size,
+        )
+
+    def _try_draw_sprite(self, surface, grid_pos, size, camera_offset) -> bool:
         """Tenta desenhar sprite pixel art. Retorna True se sucesso."""
         if not self.tile_sprite_key:
             return False
@@ -39,8 +48,7 @@ class Tile:
             spr = get_tile_sprite(self.tile_sprite_key, frame)
             if spr is None:
                 return False
-            rx = x * size - int(offset_x)
-            ry = y * size - int(offset_y)
+            rx, ry = self._screen_rect(grid_pos, size, camera_offset).topleft
             if spr.get_width() != size or spr.get_height() != size:
                 spr = pygame.transform.scale(spr, (size, size))
             surface.blit(spr, (rx, ry))
@@ -48,10 +56,11 @@ class Tile:
         except Exception:
             return False
 
-    def draw(self, surface, x, y, size, offset_x=0, offset_y=0):
-        if self._try_draw_sprite(surface, x, y, size, offset_x, offset_y):
+    def draw(self, surface, grid_pos: pygame.Vector2, size: int,
+             camera_offset: pygame.Vector2):
+        if self._try_draw_sprite(surface, grid_pos, size, camera_offset):
             return
-        rect = pygame.Rect(x * size - int(offset_x), y * size - int(offset_y), size, size)
+        rect = self._screen_rect(grid_pos, size, camera_offset)
         pygame.draw.rect(surface, self.color, rect)
         border = tuple(max(c - 30, 0) for c in self.color)
         pygame.draw.rect(surface, border, rect, 1)

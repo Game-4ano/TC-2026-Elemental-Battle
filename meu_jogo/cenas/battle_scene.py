@@ -76,10 +76,10 @@ class BattleScene(GameScene):
     # -----------------------------------------------------------------------
     def _load_characters(self):
         self.player_obj = CharacterObject(
-            self.battle.player, self.PLAYER_X, self.CHARS_Y,
+            self.battle.player, pygame.Vector2(self.PLAYER_X, self.CHARS_Y),
             fallback_color=(200, 80, 80), facing_right=True)
         self.enemy_obj  = CharacterObject(
-            self.battle.enemy,  self.ENEMY_X,  self.CHARS_Y,
+            self.battle.enemy,  pygame.Vector2(self.ENEMY_X, self.CHARS_Y),
             fallback_color=(80, 80, 200),  facing_right=False)
         self.objects = [self.player_obj, self.enemy_obj]
 

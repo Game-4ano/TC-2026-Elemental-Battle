@@ -11,14 +11,15 @@ class VoidFloorTile(Tile):
     def __init__(self):
         super().__init__("Chão do Vazio", "Dark", (15, 8, 28), True, 0)
 
-    def draw(self, surface, x, y, size, offset_x=0, offset_y=0):
-        rect = pygame.Rect(x * size - offset_x, y * size - offset_y, size, size)
+    def draw(self, surface, grid_pos, size, camera_offset):
+        rect = self._screen_rect(grid_pos, size, camera_offset)
         pygame.draw.rect(surface, self.color, rect)
         t = pygame.time.get_ticks() / 1000.0
+        gx, gy = int(grid_pos.x), int(grid_pos.y)
         for i in range(3):
-            px2 = rect.x + (i * 9 + x * 5) % (size - 4) + 2
-            py2 = rect.y + (i * 7 + y * 3) % (size - 4) + 2
-            pulse = abs(math.sin(t * 2.5 + i + x * 0.4 + y * 0.3))
+            px2 = rect.x + (i * 9 + gx * 5) % (size - 4) + 2
+            py2 = rect.y + (i * 7 + gy * 3) % (size - 4) + 2
+            pulse = abs(math.sin(t * 2.5 + i + gx * 0.4 + gy * 0.3))
             r = int(1 + 2 * pulse)
             cv = int(80 + 120 * pulse)
             pygame.draw.circle(surface, (cv // 2, 0, cv), (px2, py2), r)
@@ -29,18 +30,19 @@ class ShadowCrystalTile(Tile):
     def __init__(self):
         super().__init__("Cristal das Sombras", "Dark", (60, 10, 100), False, 0)
 
-    def draw(self, surface, x, y, size, offset_x=0, offset_y=0):
-        rect = pygame.Rect(x * size - offset_x, y * size - offset_y, size, size)
+    def draw(self, surface, grid_pos, size, camera_offset):
+        rect = self._screen_rect(grid_pos, size, camera_offset)
         pygame.draw.rect(surface, (10, 3, 20), rect)
         t = pygame.time.get_ticks() / 1000.0
-        glow = int(80 + 120 * abs(math.sin(t * 1.8 + x + y)))
+        gx, gy = int(grid_pos.x), int(grid_pos.y)
+        glow = int(80 + 120 * abs(math.sin(t * 1.8 + gx + gy)))
         cx2, cy2 = rect.centerx, rect.centery
         pts = [(cx2, rect.y + 2), (rect.x + size - 4, cy2 - 2),
                (cx2, rect.y + size - 2), (rect.x + 4, cy2 + 2)]
         pygame.draw.polygon(surface, (glow // 2, 0, glow), pts)
         pygame.draw.polygon(surface, (180, 100, 255), pts, 1)
         # Olho que abre/fecha esporadicamente
-        eye_phase = abs(math.sin(t * 0.55 + x * 1.4 + y * 0.85))
+        eye_phase = abs(math.sin(t * 0.55 + gx * 1.4 + gy * 0.85))
         if eye_phase > 0.78:
             ea = int(220 * (eye_phase - 0.78) / 0.22)
             es = pygame.Surface((10, 5), pygame.SRCALPHA)
@@ -66,15 +68,16 @@ class TwilightTile(Tile):
         )
         super().__init__("Crepúsculo", "Air", color, True, 0)
 
-    def draw(self, surface, x, y, size, offset_x=0, offset_y=0):
-        rect = pygame.Rect(x * size - offset_x, y * size - offset_y, size, size)
+    def draw(self, surface, grid_pos, size, camera_offset):
+        rect = self._screen_rect(grid_pos, size, camera_offset)
         pygame.draw.rect(surface, self.color, rect)
         t = pygame.time.get_ticks() / 1000.0
 
         if self.blend < 0.7:   # particulas roxas, mais fortes perto do vazio
-            px2 = rect.x + (x * 9) % (size - 4) + 2
-            py2 = rect.y + (y * 7) % (size - 4) + 2
-            pulse = abs(math.sin(t * 2.0 + x * 0.4 + y * 0.3))
+            gx, gy = int(grid_pos.x), int(grid_pos.y)
+            px2 = rect.x + (gx * 9) % (size - 4) + 2
+            py2 = rect.y + (gy * 7) % (size - 4) + 2
+            pulse = abs(math.sin(t * 2.0 + gx * 0.4 + gy * 0.3))
             a = int(160 * (1.0 - self.blend) * pulse)
             if a > 0:
                 s = pygame.Surface((4, 4), pygame.SRCALPHA)
@@ -94,11 +97,12 @@ class DarkMistTile(Tile):
     def __init__(self):
         super().__init__("Névoa Sombria", "Dark", (25, 10, 40), True, 0)
 
-    def draw(self, surface, x, y, size, offset_x=0, offset_y=0):
-        rect = pygame.Rect(x * size - offset_x, y * size - offset_y, size, size)
+    def draw(self, surface, grid_pos, size, camera_offset):
+        rect = self._screen_rect(grid_pos, size, camera_offset)
         pygame.draw.rect(surface, self.color, rect)
         t = pygame.time.get_ticks() / 1000.0
-        alpha_factor = abs(math.sin(t * 1.2 + x * 0.5 + y * 0.4))
+        gx, gy = int(grid_pos.x), int(grid_pos.y)
+        alpha_factor = abs(math.sin(t * 1.2 + gx * 0.5 + gy * 0.4))
         mc = int(60 + 80 * alpha_factor)
         pygame.draw.ellipse(surface, (mc // 3, 0, mc),
             pygame.Rect(rect.x + 3, rect.y + size // 3, size - 6, size // 3))
