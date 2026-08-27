@@ -1,8 +1,9 @@
 import pygame
 
 from meu_jogo.core.game_scene import GameScene
-from meu_jogo.core.config import SCREEN_WIDTH, SCREEN_HEIGHT, WHITE
+from meu_jogo.core.config import SCREEN_WIDTH, SCREEN_HEIGHT, WHITE, MAX_NOME_LEN
 from meu_jogo.core.game_state import GameState
+from meu_jogo.cenas.widgets.caixa_nome import CaixaDeNome
 
 
 class GameOverScene(GameScene):
@@ -14,18 +15,33 @@ class GameOverScene(GameScene):
         self._alpha      = 0
         self._fade_done  = False
 
-        novo_recorde = self.manager.save.save_highscore(total_score)
-        self._highscore   = self.manager.save.load_highscore()
-        self._novo_record = novo_recorde
+        # Se a pontuacao entra no ranking, pede o nome antes de salvar.
+        self._rank  = 0
+        self._caixa = None
+        if self.manager.save.qualifica(total_score):
+            self._caixa = CaixaDeNome(MAX_NOME_LEN, on_confirm=self._salvar)
+        self._highscore = self.manager.save.load_highscore()
 
         self.manager.audio.play_sfx("defeat")
 
+    def _salvar(self, nome: str):
+        """Callback da CaixaDeNome: grava a pontuacao e fecha a entrada."""
+        self._rank      = self.manager.save.save_score(nome, self.total_score)
+        self._caixa     = None
+        self._highscore = self.manager.save.load_highscore()
+
     # -----------------------------------------------------------------------
     def handle_event(self, event: pygame.event.Event):
+        # Enquanto digita, ENTER confirma o nome e NAO fecha a tela.
+        if self._caixa is not None:
+            self._caixa.handle_event(event)
+            return
         if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
             self._ir_para_menu()
 
     def update(self, dt: float):
+        if self._caixa is not None:
+            self._caixa.update(dt)
         if not self._fade_done:
             self._alpha = min(255, self._alpha + int(dt * 280))
             if self._alpha >= 255:
@@ -60,18 +76,23 @@ class GameOverScene(GameScene):
         surf.blit(sub,    (cx - sub.get_width()    // 2, cy - 30))
         surf.blit(score,  (cx - score.get_width()  // 2, cy + 10))
 
-        # Recorde
-        if self._novo_record:
-            rec_txt = f_sub.render("NOVO RECORDE!", True, (255, 215, 0))
+        # Recorde / posicao conquistada no ranking
+        if self._rank > 0:
+            rec_txt = f_sub.render(f"NOVO RECORDE!  #{self._rank}", True, (255, 215, 0))
             surf.blit(rec_txt, (cx - rec_txt.get_width() // 2, cy + 46))
         else:
             rec_txt = f_hint.render(f"Recorde: {self._highscore}", True, (160, 160, 160))
             surf.blit(rec_txt, (cx - rec_txt.get_width() // 2, cy + 50))
 
-        hint = f_hint.render("ENTER = menu principal", True, (160, 160, 160))
-        surf.blit(hint, (cx - hint.get_width() // 2, cy + 90))
+        if self._caixa is None:
+            hint = f_hint.render("ENTER = menu principal", True, (160, 160, 160))
+            surf.blit(hint, (cx - hint.get_width() // 2, cy + 90))
 
         screen.blit(surf, (0, 0))
+
+        # Fora do fade para continuar legivel enquanto o texto ainda escurece.
+        if self._caixa is not None:
+            self._caixa.draw(screen, pygame.Vector2(cx, cy + 100))
 
     def render(self, screen: pygame.Surface):
         self.draw(screen)

@@ -91,7 +91,16 @@ VANTAGENS = list(element_advantage.items())
 #  Helpers de desenho
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _draw_symbol(surface, elem, cx, cy, raio, hover=False, t=0.0):
+def desenhar_gradiente(surface, topo, base):
+    """Preenche a tela com um degrade vertical. Reaproveitado pela HistoricoScene."""
+    for i in range(SCREEN_HEIGHT):
+        t = i / SCREEN_HEIGHT
+        c = tuple(int(topo[j] + (base[j] - topo[j]) * t) for j in range(3))
+        pygame.draw.line(surface, c, (0, i), (SCREEN_WIDTH, i))
+
+
+def _draw_symbol(surface, elem, centro: pygame.Vector2, raio, hover=False, t=0.0):
+    cx, cy    = int(centro.x), int(centro.y)
     cor       = elem["cor"]
     cor_clara = elem["cor_clara"]
 
@@ -154,28 +163,29 @@ def _draw_symbol(surface, elem, cx, cy, raio, hover=False, t=0.0):
     surface.blit(txt, (cx - txt.get_width() // 2, cy - txt.get_height() // 2))
 
 
-def _draw_arrow(surface, x1, y1, x2, y2, cor, raio_skip=40):
-    dx   = x2 - x1
-    dy   = y2 - y1
-    dist = math.hypot(dx, dy)
+def _draw_arrow(surface, origem: pygame.Vector2, destino: pygame.Vector2,
+                cor, raio_skip=40):
+    direcao = destino - origem
+    dist    = direcao.length()
     if dist == 0:
         return
-    ux, uy = dx / dist, dy / dist
-    sx = x1 + ux * raio_skip
-    sy = y1 + uy * raio_skip
-    ex = x2 - ux * raio_skip
-    ey = y2 - uy * raio_skip
-    pygame.draw.line(surface, cor, (int(sx), int(sy)), (int(ex), int(ey)), 2)
+    u     = direcao / dist
+    ini   = origem  + u * raio_skip   # recua o inicio para fora do circulo
+    fim   = destino - u * raio_skip
+    pygame.draw.line(surface, cor,
+                     (int(ini.x), int(ini.y)), (int(fim.x), int(fim.y)), 2)
     head  = 10
-    angle = math.atan2(ey - sy, ex - sx)
+    angle = math.atan2(fim.y - ini.y, fim.x - ini.x)
     for side in (+0.45, -0.45):
-        ax = ex - head * math.cos(angle - side)
-        ay = ey - head * math.sin(angle - side)
+        ponta = fim - pygame.Vector2(math.cos(angle - side),
+                                     math.sin(angle - side)) * head
         pygame.draw.line(surface, cor,
-                         (int(ex), int(ey)), (int(ax), int(ay)), 2)
+                         (int(fim.x), int(fim.y)),
+                         (int(ponta.x), int(ponta.y)), 2)
 
 
-def _draw_legend_arrow(surface, x, y, cor):
+def _draw_legend_arrow(surface, pos: pygame.Vector2, cor):
+    x, y = int(pos.x), int(pos.y)
     pygame.draw.line(surface, cor, (x, y), (x + 22, y), 2)
     pygame.draw.line(surface, cor, (x + 22, y), (x + 14, y - 4), 2)
     pygame.draw.line(surface, cor, (x + 22, y), (x + 14, y + 4), 2)
@@ -189,6 +199,9 @@ class MenuScene(GameScene):
 
     FASE_TITULO  = "titulo"
     FASE_SELECAO = "selecao"
+
+    # Geometria dos botoes da tela de titulo
+    BTN_W, BTN_H, BTN_GAP = 118, 26, 8
 
     def __init__(self, manager):
         super().__init__(manager)
@@ -237,7 +250,54 @@ class MenuScene(GameScene):
         self._title_color_t = 0.0
         self._modal: str | None = None
 
+        # Recorde lido uma unica vez: as telas de fim de partida sempre criam
+        # um MenuScene novo ao voltar, entao o valor nunca fica desatualizado.
+        self._highscore = self.manager.save.load_highscore()
+
+        # Botoes da tela de titulo, montados uma unica vez: desenho e clique
+        # usam exatamente os mesmos retangulos (antes eram calculados em dois
+        # lugares distintos e so batiam por coincidencia).
+        self._botoes_titulo = self._montar_botoes_titulo()
+
         self.manager.audio.play_music("menu_theme", volume=0.45)
+
+    # -----------------------------------------------------------------------
+    def _montar_botoes_titulo(self):
+        """Distribui os botoes numa linha centrada. Retorna [(rect, label, acao)]."""
+        itens = [
+            ("Como jogar?", lambda: self._abrir_modal("como_jogar")),
+            ("Creditos",    lambda: self._abrir_modal("creditos")),
+            ("Historico",   self._abrir_historico),
+            ("Sair",        self._sair),
+        ]
+        total = len(itens) * self.BTN_W + (len(itens) - 1) * self.BTN_GAP
+        x     = SCREEN_WIDTH // 2 - total // 2
+        y     = SCREEN_HEIGHT // 2 + 94
+
+        botoes = []
+        for label, acao in itens:
+            botoes.append((pygame.Rect(x, y, self.BTN_W, self.BTN_H), label, acao))
+            x += self.BTN_W + self.BTN_GAP
+        return botoes
+
+    def _abrir_modal(self, qual: str):
+        self._modal = qual
+
+    def _sair(self):
+        """Encerra o jogo desligando a flag do loop principal (GameManager.run).
+
+        Preferido ao pygame.event.post(QUIT): a flag e o mecanismo que o proprio
+        loop ja usa, entao o encerramento segue exatamente o mesmo caminho do
+        fechar-janela (sai do while e chama pygame.quit()).
+        """
+        self.manager.audio.play_sfx("menu_select")
+        self.manager.running = False
+
+    def _abrir_historico(self):
+        # Import local: historico_scene importa este modulo para o degrade.
+        from meu_jogo.cenas.historico_scene import HistoricoScene
+        self.manager.audio.play_sfx("menu_select")
+        self.manager.scene_manager.change_scene(HistoricoScene(self.manager))
 
     # -----------------------------------------------------------------------
     def _calcular_posicoes(self):
@@ -248,8 +308,8 @@ class MenuScene(GameScene):
         pos = []
         for i in range(n):
             ang = -math.pi / 2 + (2 * math.pi * i / n)
-            pos.append((int(cx0 + r * math.cos(ang)),
-                        int(cy0 + r * math.sin(ang))))
+            pos.append(pygame.Vector2(int(cx0 + r * math.cos(ang)),
+                                      int(cy0 + r * math.sin(ang))))
         return pos
 
     # -----------------------------------------------------------------------
@@ -261,16 +321,11 @@ class MenuScene(GameScene):
 
         if self.fase == self.FASE_TITULO:
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                mx, my = event.pos
-                cy = SCREEN_HEIGHT // 2
-                btn1 = pygame.Rect(SCREEN_WIDTH//2 - 168, cy + 94, 156, 26)
-                btn2 = pygame.Rect(SCREEN_WIDTH//2 + 12,  cy + 94, 156, 26)
-                if btn1.collidepoint(mx, my):
-                    self._modal = "como_jogar"
-                    return
-                if btn2.collidepoint(mx, my):
-                    self._modal = "creditos"
-                    return
+                # Mesma lista usada no desenho — nao ha rects duplicados.
+                for rect, _label, acao in self._botoes_titulo:
+                    if rect.collidepoint(event.pos):
+                        acao()
+                        return
             if event.type in (pygame.KEYDOWN, pygame.MOUSEBUTTONDOWN):
                 self.fase = self.FASE_SELECAO
 
@@ -281,7 +336,7 @@ class MenuScene(GameScene):
                         self._iniciar_jogo(elem)
                         return
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                idx = self._elem_sob_mouse(*pygame.mouse.get_pos())
+                idx = self._elem_sob_mouse(pygame.Vector2(pygame.mouse.get_pos()))
                 if idx >= 0:
                     self._iniciar_jogo(ELEMENTOS[idx])
 
@@ -292,7 +347,7 @@ class MenuScene(GameScene):
             self._blink_vis   = not self._blink_vis
         self._arrow_timer += dt
         if self.fase == self.FASE_SELECAO:
-            self._hover_idx = self._elem_sob_mouse(*pygame.mouse.get_pos())
+            self._hover_idx = self._elem_sob_mouse(pygame.Vector2(pygame.mouse.get_pos()))
 
         self._title_color_t += dt * 0.7
         speed_mults = [0.4, 1.0, 2.2]
@@ -312,13 +367,19 @@ class MenuScene(GameScene):
                 silh["y"] = random.randint(60, 340)
 
     # -----------------------------------------------------------------------
-    def _elem_sob_mouse(self, mx, my):
-        for i, (cx, cy) in enumerate(self._elem_pos):
-            if math.hypot(mx - cx, my - cy) <= 42:
+    def _elem_sob_mouse(self, mouse_pos: pygame.Vector2):
+        for i, centro in enumerate(self._elem_pos):
+            if centro.distance_to(mouse_pos) <= 42:
                 return i
         return -1
 
     def _iniciar_jogo(self, elem):
+        # Partida nova: zera campanha, herói e pontuação acumulada, e garante
+        # que o jogador comece no mundo aberto (e não na sala da última luta).
+        self.manager.game.reiniciar_campanha()
+        self.manager.score.resetar()
+        self.manager.map_manager.load_map("MUNDO_ABERTO")
+
         player          = self.manager.game.player
         player.element  = elem["key"]
         player.weakness = elem["fraqueza"]
@@ -387,14 +448,8 @@ class MenuScene(GameScene):
                     [(4,86),(18,42),(34,30),(56,30),(72,42),(86,86),(62,72),(45,82),(28,72)])
             screen.blit(s, (sx - W // 2, sy - H // 2))
 
-    def _bg_gradient(self, screen, top, bot):
-        for i in range(SCREEN_HEIGHT):
-            t = i / SCREEN_HEIGHT
-            c = tuple(int(top[j] + (bot[j] - top[j]) * t) for j in range(3))
-            pygame.draw.line(screen, c, (0, i), (SCREEN_WIDTH, i))
-
     def _draw_titulo(self, screen):
-        self._bg_gradient(screen, (10, 5, 30), (30, 15, 60))
+        desenhar_gradiente(screen, (10, 5, 30), (30, 15, 60))
         self._draw_silhouettes(screen)
         self._draw_stars(screen)
 
@@ -454,27 +509,21 @@ class MenuScene(GameScene):
             msg = self._f_sub.render("Aperte qualquer tecla para comecar", True, (220, 220, 255))
             screen.blit(msg, (SCREEN_WIDTH // 2 - msg.get_width() // 2, cy + 40))
 
-        # Recorde salvo
-        hs = self.manager.save.load_highscore()
-        if hs > 0:
-            hs_txt = self._f_pequena.render(f"Recorde: {hs}", True, (200, 180, 80))
+        # Recorde salvo (lido uma vez no __init__, nao a cada frame)
+        if self._highscore > 0:
+            hs_txt = self._f_pequena.render(
+                f"Recorde: {self._highscore}", True, (200, 180, 80))
             screen.blit(hs_txt, (SCREEN_WIDTH // 2 - hs_txt.get_width() // 2, cy + 74))
 
-        # Botões "Como jogar?" e "Créditos"
-        btn_w, btn_h = 156, 26
-        btn_y = cy + 94
-        for btn_x, label in [
-            (SCREEN_WIDTH//2 - btn_w - 12, "Como jogar?"),
-            (SCREEN_WIDTH//2 + 12,          "Creditos"),
-        ]:
-            bsurf = pygame.Surface((btn_w, btn_h), pygame.SRCALPHA)
+        # Botões da tela de título (mesma lista que handle_event usa no clique)
+        for rect, label, _acao in self._botoes_titulo:
+            bsurf = pygame.Surface(rect.size, pygame.SRCALPHA)
             bsurf.fill((15, 10, 40, 180))
-            screen.blit(bsurf, (btn_x, btn_y))
-            pygame.draw.rect(screen, (120, 100, 180),
-                             (btn_x, btn_y, btn_w, btn_h), 1, border_radius=4)
+            screen.blit(bsurf, rect.topleft)
+            pygame.draw.rect(screen, (120, 100, 180), rect, 1, border_radius=4)
             bl = self._f_normal.render(label, True, (200, 200, 255))
-            screen.blit(bl, (btn_x + btn_w//2 - bl.get_width()//2,
-                             btn_y + btn_h//2 - bl.get_height()//2))
+            screen.blit(bl, (rect.centerx - bl.get_width()  // 2,
+                             rect.centery - bl.get_height() // 2))
 
         # Créditos
         cred = self._f_pequena.render(
@@ -484,7 +533,7 @@ class MenuScene(GameScene):
 
     # -----------------------------------------------------------------------
     def _draw_selecao(self, screen):
-        self._bg_gradient(screen, (8, 8, 25), (20, 15, 45))
+        desenhar_gradiente(screen, (8, 8, 25), (20, 15, 45))
         self._draw_stars(screen)
 
         # Título compacto no topo
@@ -507,15 +556,15 @@ class MenuScene(GameScene):
             p2 = pos_map[vitima]
             base = next(e["cor_clara"] for e in ELEMENTOS if e["key"] == atacante)
             cor_p = tuple(int(c * pulse / 255) for c in base)
-            _draw_arrow(screen, p1[0], p1[1], p2[0], p2[1], cor_p)
+            _draw_arrow(screen, p1, p2, cor_p)
 
         # Rótulo "vence" no meio de cada seta
         f_tiny = pygame.font.SysFont(None, 16)
         for (atacante, vitima) in VANTAGENS:
             p1 = pos_map[atacante]
             p2 = pos_map[vitima]
-            mx = (p1[0] + p2[0]) // 2
-            my = (p1[1] + p2[1]) // 2
+            meio = (p1 + p2) / 2
+            mx, my = int(meio.x), int(meio.y)
             lbl = f_tiny.render("vence", True, (200, 200, 200))
             # fundo mini
             bg = pygame.Surface((lbl.get_width() + 4, lbl.get_height() + 2), pygame.SRCALPHA)
@@ -526,13 +575,12 @@ class MenuScene(GameScene):
         # Círculos dos elementos (hover dinâmico + animações elementais)
         t_sel = pygame.time.get_ticks() / 1000.0
         for i, elem in enumerate(ELEMENTOS):
-            cx, cy = self._elem_pos[i]
-            _draw_symbol(screen, elem, cx, cy, raio=38,
+            _draw_symbol(screen, elem, self._elem_pos[i], raio=38,
                          hover=(i == self._hover_idx), t=t_sel)
 
         # Tecla de seleção abaixo de cada círculo
         for i, elem in enumerate(ELEMENTOS):
-            cx, cy = self._elem_pos[i]
+            cx, cy = int(self._elem_pos[i].x), int(self._elem_pos[i].y)
             lbl = self._f_normal.render(elem["label"], True, elem["cor_clara"])
             screen.blit(lbl, (cx - lbl.get_width() // 2, cy + 46))
 
@@ -559,7 +607,7 @@ class MenuScene(GameScene):
         screen.blit(bg, (box.x, box.y))
         pygame.draw.rect(screen, (70, 70, 110), box, 1, border_radius=4)
 
-        _draw_legend_arrow(screen, 18, leg_y + 9, (200, 200, 200))
+        _draw_legend_arrow(screen, pygame.Vector2(18, leg_y + 9), (200, 200, 200))
         leg1 = self._f_pequena.render(
             "A seta mostra quem vence quem  |  Clique ou [1-5] para escolher",
             True, (180, 180, 215))

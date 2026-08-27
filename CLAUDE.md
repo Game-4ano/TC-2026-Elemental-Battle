@@ -1,251 +1,196 @@
-# PROMPT_VETORES_INTERFACES — Agrupar x/y em Vector2 nas interfaces
+# PROMPT — TRIMESTRE 3: MENU, HISTÓRICO DE PONTUAÇÃO, NOME DO JOGADOR E SAIR
 
-> **Projeto:** Elemental Battle (TC-2026-ELEMENTAL-BATTLE) — Python + Pygame
-> **Tipo de tarefa:** Refatoração arquitetural (OO / clareza de interfaces)
-> **Executor:** Claude Code
-> Leia o `CLAUDE.md` da raiz antes de começar. Respostas curtas (3–8 linhas).
-
----
-
-## 0. Exigência do professor (motivo desta tarefa)
-
-Citação literal do enunciado (`0jogo.pdf`):
-
-> "Para unidades geométricas como ponto e vetores (exemplo posição e velocidade
-> de um objeto), **não trabalhar com variáveis independentes para os eixos x e y.
-> Criem uma estrutura que agrupe essas duas variáveis x e y em um único objeto.**"
->
-> "Não usar números inteiros para armazenar posição (velocidade, etc). Usem
-> pontos flutuantes."
-
-**Decisão de projeto:** a "estrutura que agrupa x e y" será o **`pygame.Vector2`**
-(já usado internamente, componentes float, sem dependência nova). Nenhuma classe
-`Vec2` própria é necessária. Padronizamos `pygame.Vector2` em **todas as
-interfaces públicas** que hoje recebem/expõem um par geométrico (posição,
-velocidade, offset de câmera, coordenada de grid, delta de movimento, spawn).
-
-**O que NÃO muda:** física (`apply_physics` já faz `position += velocity * dt`),
-lógica de score/HP/níveis, áudio, save, SmartAI, fluxo de cenas. Isto é só
-troca de *assinaturas* + os pontos de chamada correspondentes.
+> Workstream de **correção de requisitos obrigatórios do Trimestre 3** (do `0jogo.pdf`).
+> Não é polimento visual — são requisitos binários que o professor cobra explicitamente.
+> Trabalhe **uma fase por vez** e **PARE** ao final de cada uma para eu confirmar.
 
 ---
 
-## 1. Regras invioláveis
+## CONTEXTO
 
-1. **Apenas `str_replace` cirúrgico** — sem reescrever arquivos inteiros.
-2. **Sem novas bibliotecas** — só `pygame` + stdlib.
-3. **Comentários em português preservados.**
-4. **Polimorfismo intacto:** ao mudar a assinatura de um método da base (ex.
-   `Tile.draw`), **todos os overrides das subclasses e o(s) ponto(s) de chamada
-   mudam na MESMA fase.** Nunca deixar base e filha com assinaturas divergentes
-   (isso quebra LSP e o professor penaliza).
-5. **Nada de shim/compat pela metade** dentro de uma mesma fase: ou migra o
-   método e todos os seus usos, ou não toca.
-6. **Cada fase termina com STOP** e aguarda a confirmação do Artur antes de
-   seguir. As fases são independentes — dá pra parar em qualquer uma.
-7. Coordenadas de grid podem viajar como `Vector2` (float) na interface e ser
-   convertidas com `int(...)` **apenas no acesso à matriz** — não reintroduzir
-   `grid_x`/`grid_y` como campos separados.
+Projeto: **Elemental Battle** (Python + Pygame, disciplina Tópicos em Computação).
+Cenas existentes: `MenuScene`, `CampoDeTreinoScene`, `BattleScene`, `GameOverScene`, `VictoryScene`.
+`GameScene` é a classe-base polimórfica (`handle_event`, `update(dt)`, `draw(screen)`, `render(screen)`).
 
----
+APIs conhecidas do `manager` (confirmar exatas na Fase 0):
+- `self.manager.save` → instância de `SaveSystem` (`save_highscore(score)`, `load_highscore()`)
+- `self.manager.scene_manager.change_scene(SceneClass(self.manager))`
+- `self.manager.audio.play_sfx(chave)` / `play_music(chave, volume=...)`
+- `self.manager.notificacoes.adicionar(texto, cor=..., duracao=...)`
+- `self.manager.game.player` (tem `.element`, `.weakness`)
+- `config`: `SCREEN_WIDTH`, `SCREEN_HEIGHT`, `WHITE`, `BLACK`
 
-## FASE 0 — AUDITORIA (somente leitura, NÃO edite nada)
+### Lacunas identificadas (o que este prompt resolve)
+1. **`SaveSystem` guarda só um inteiro** (`{"highscore": N}`) — não salva o **nome** do jogador (requisito explícito do T3).
+2. **Não há tela de histórico/ranking** — o menu só mostra "Recorde: N" (um número), não uma lista de jogadores.
+3. **Não há item "Sair"** no menu de título (o professor lista "sair" ao lado de "iniciar").
+4. **Retorno ao menu após o fim** — a confirmar se `VictoryScene`/`GameOverScene` voltam ao `MenuScene`.
 
-Mapeie e **liste** todas as assinaturas e atributos que hoje separam um par
-geométrico em x/y. Para cada ocorrência informe: arquivo, linha, assinatura
-atual e todos os pontos de chamada. Cubra no mínimo:
-
-- `core/game_object.py` → `GameObject.__init__(self, x, y)`.
-- Subclasses de `GameObject` e seus construtores (ex. `Projectile`,
-  `CharacterObject` em `cenas/battle_scene.py`) e como chamam `super().__init__`.
-- `core/map.py` → `Tile.draw(self, surface, x, y, size, offset_x=0, offset_y=0)`
-  e **quantas subclasses** sobrescrevem `draw` (conte-as).
-- `core/map.py` → `Map.get_tile_at(grid_x, grid_y)`, `Map.is_walkable(grid_x, grid_y)`,
-  `Map.update_camera(player_pixel_x, player_pixel_y, dt)`, campos
-  `camera_offset_x` / `camera_offset_y`, e a chamada `tile.draw(...)` em `Map.draw`.
-- `PortalTile` → campos `spawn_x` / `spawn_y` (par de spawn) e onde são lidos.
-- `cenas/campo_de_treino.py` → `player_grid_x` / `player_grid_y`, `_try_move(dx, dy)`,
-  `_detect_region`, uso de `cmap.camera_offset_x/y`, e a montagem de `px, py`
-  antes de `update_camera`.
-- `data/maps_data.py` → onde `spawn_x/spawn_y` de portais são definidos (se houver).
-
-**Entregue como saída da Fase 0:** uma tabela/lista com contagem total de
-assinaturas afetadas e um plano confirmando (ou ajustando) as fases 1–5 abaixo.
-Sinalize qualquer surpresa (outros pares x/y não previstos aqui). **STOP.**
+Já está OK (não mexer): item de **Créditos** (existe modal + rodapé no `MenuScene`), iniciar o jogo, seleção de elemento.
 
 ---
 
-## FASE 1 — Núcleo: `GameObject` recebe `Vector2`
+## REGRAS GLOBAIS (valem para TODAS as fases)
 
-**Arquivo:** `core/game_object.py` (+ construtores das subclasses)
+1. **Somente edições cirúrgicas com `str_replace`.** Nada de reescrever arquivo inteiro (exceto `save_system.py`, que é pequeno e será substituído por versão nova compatível — ainda assim, mantenha assinaturas públicas antigas).
+2. **Zero novas dependências.** Só `pygame` + stdlib (`json`, `os`, `datetime`).
+3. **OO/herança/polimorfismo obrigatórios.** Toda tela nova herda de `GameScene`. A captura de nome deve ser uma **classe reutilizável** (usada por Victory e GameOver — não duplicar).
+4. **Comentários em português**, no mesmo estilo do código atual.
+5. **Constantes de ajuste** (nº de entradas no ranking, tamanho máx. do nome, etc.) vão em `core/config.py` — em nenhum outro lugar.
+6. **Não quebrar nada existente**: menu, batalha, áudio, score, save, SmartAI, fluxo Menu → Overworld → Batalha → GameOver/Victory.
+7. **`load_highscore()` deve continuar funcionando** exatamente como hoje (o `MenuScene._draw_titulo` chama `self.manager.save.load_highscore()` e espera um `int`).
+8. Ao final de cada fase, escreva um resumo curto (3–8 linhas) e **PARE** com `>>> AGUARDANDO CONFIRMAÇÃO <<<`.
 
-Alvo:
-```python
-# ANTES
-def __init__(self, x: float, y: float):
-    self.position = pygame.Vector2(x, y)
-    self.velocity = pygame.Vector2(0.0, 0.0)
-    self.alive = True
+---
 
-# DEPOIS
-def __init__(self, position: pygame.Vector2):
-    self.position = pygame.Vector2(position)   # cópia defensiva
-    self.velocity = pygame.Vector2(0.0, 0.0)
-    self.alive = True
+## FASE 0 — AUDITORIA (NÃO EDITAR NADA)
+
+Objetivo: mapear o que existe antes de tocar no código. **Somente leitura + relatório.**
+
+Leia e reporte (com nº de linha quando útil):
+
+1. **`meu_jogo/core/save_system.py`** — formato atual do JSON e todos os métodos. (Já sei que é `{"highscore": N}`; confirme.)
+2. **Onde `SaveSystem` é instanciado** e ligado a `self.manager.save` (provavelmente no `GameManager`/`core/game.py`). Confirme o atributo exato.
+3. **`meu_jogo/cenas/gameover_scene.py`** e **`meu_jogo/cenas/victory_scene.py`**:
+   - Elas **voltam ao `MenuScene`** ao final? Como (tecla? timer? `change_scene`?)?
+   - Onde está a **pontuação final** da partida? (nome do atributo/objeto — `ScoreSystem`? `player.score`?)
+   - Elas **chamam `save_highscore`** hoje? Onde?
+   - Estrutura de `handle_event`/`update`/`draw` de cada uma.
+4. **Quem chama `save_highscore`** em todo o projeto (grep). Preciso saber todos os call sites antes de mudar a assinatura.
+5. **Como o jogo é encerrado** no main loop (`core/game.py` ou `game_manager`): existe flag tipo `self.running = False`? O loop já trata `pygame.QUIT`? (Isso define como implementar o "Sair".)
+6. **Convenção de pastas para UI/helpers** — existe algo tipo `meu_jogo/ui/` ou `meu_jogo/cenas/widgets/`? (Define onde criar o widget de entrada de nome.)
+7. Confirme se há **`ScoreSystem`** e como pegar o **score final** de uma run.
+
+**PARE.** Entregue o relatório e um plano de 1 linha por fase confirmando os pontos de ancoragem. Não edite nada.
+
+`>>> AGUARDANDO CONFIRMAÇÃO <<<`
+
+---
+
+## FASE 1 — `SaveSystem`: ranking com nome + migração do formato antigo
+
+Substituir o `save_system.py` por uma versão que guarda uma **lista de entradas** com nome, mantendo 100% de compatibilidade com `load_highscore()`.
+
+Novo formato do JSON (`~/.elemental_battle/highscore.json`):
+```json
+{ "scores": [ {"nome": "ART", "pontos": 1286, "data": "2026-08-26"}, ... ] }
 ```
 
-Atualizar **na mesma fase** todos os construtores de subclasses de `GameObject`
-e suas chamadas a `super().__init__`. Ex. em `battle_scene.py`:
-```python
-# ANTES
-super().__init__(origin.x, origin.y)
-# DEPOIS
-super().__init__(pygame.Vector2(origin))
-```
-Faça o mesmo para `CharacterObject` e qualquer outra subclasse (use a lista da
-Fase 0). Se algum chamador tiver x/y soltos, monte `pygame.Vector2(x, y)` na
-chamada — a *interface* passa a ser vetorial.
+Métodos da classe `SaveSystem` (manter o nome da classe):
+- `save_score(self, nome: str, pontos: int) -> int` — insere a entrada, ordena por `pontos` desc, corta em `MAX_HISCORES` (config), grava, e retorna a **posição (rank, 1-based)** da entrada, ou `0` se não entrou no ranking.
+- `load_scores(self) -> list[dict]` — retorna a lista ordenada (desc), já migrando o formato antigo se necessário (ver abaixo). Lista vazia se não houver arquivo.
+- `load_highscore(self) -> int` — **manter assinatura**; retorna `max(pontos)` das entradas, ou `0`. (É o que o menu usa.)
+- `save_highscore(self, score: int) -> bool` — **manter como shim de compatibilidade**: chama internamente `save_score("---", score)` (ou o que a Fase 0 indicar) e retorna `True` se entrou no ranking. NÃO remover, porque a Fase 0 pode ter achado call sites que dependem dele — só substituiremos esses call sites na Fase 2.
+- `qualifica(self, pontos: int) -> bool` — retorna `True` se `pontos` entraria no top `MAX_HISCORES` (usado para decidir se pede nome).
 
-**Verificação:** o jogo inicia, entra em batalha, projétil voa e acerta.
-**STOP.**
+Migração (dentro de `load_scores`): se o JSON tiver a chave antiga `"highscore"` e **não** tiver `"scores"`, converter para `[{"nome": "---", "pontos": <N>, "data": <hoje>}]` e regravar. Nunca perder o recorde antigo.
+
+Robustez: `try/except` em torno de leitura (arquivo inexistente, JSON corrompido) retornando lista vazia — igual ao estilo atual.
+
+Adicionar em `core/config.py`:
+```python
+MAX_HISCORES = 10          # nº de entradas guardadas/exibidas no ranking
+MAX_NOME_LEN = 12          # tamanho máximo do nome do jogador
+```
+
+**PARE.** Mostre o `save_system.py` novo e as 2 constantes. Confirme que `load_highscore()` segue idêntico em comportamento.
+
+`>>> AGUARDANDO CONFIRMAÇÃO <<<`
 
 ---
 
-## FASE 2 — `Tile.draw` vetorial + helper reaproveitável
+## FASE 2 — Widget reutilizável de entrada de nome + captura no fim da partida
 
-**Arquivo:** `core/map.py`
+### 2.1 Widget `CaixaDeNome` (classe reutilizável — evita duplicar em Victory/GameOver)
+Criar em `meu_jogo/cenas/widgets/caixa_nome.py` (ou no caminho que a Fase 0 indicar). Classe simples, **não** herda de `GameScene` (é um componente, não uma cena):
 
-### 2.1 Nova interface da base + helper (reduz repetição = ponto de reuso)
 ```python
-class Tile:
-    def draw(self, surface, grid_pos: pygame.Vector2, size: int,
-             camera_offset: pygame.Vector2):
-        rect = self._screen_rect(grid_pos, size, camera_offset)
-        ...
-
-    def _screen_rect(self, grid_pos: pygame.Vector2, size: int,
-                     camera_offset: pygame.Vector2) -> pygame.Rect:
-        """Converte posição de grid (lógica) para retângulo em pixels (render)."""
-        return pygame.Rect(
-            int(grid_pos.x * size - camera_offset.x),
-            int(grid_pos.y * size - camera_offset.y),
-            size, size,
-        )
+class CaixaDeNome:
+    def __init__(self, max_len: int, on_confirm):
+        """on_confirm(nome: str) é chamado quando o jogador aperta ENTER."""
+    def handle_event(self, event): ...   # KEYDOWN: event.unicode imprimível -> append;
+                                         # BACKSPACE -> remove; ENTER -> on_confirm(nome)
+    def update(self, dt): ...            # cursor piscando
+    def draw(self, screen, cx, cy): ...  # caixa + texto digitado + cursor
+    @property
+    def texto(self) -> str: ...
 ```
+Detalhes: filtrar `event.unicode` para caracteres imprimíveis, respeitar `MAX_NOME_LEN`, cursor piscando via `dt`. Se o jogador confirmar vazio, usar `"---"` (ou bloquear ENTER até ter ≥1 char — escolha e comente).
 
-### 2.2 Migrar TODAS as subclasses que sobrescrevem `draw`
-Para cada override (a lista veio da Fase 0):
-- Trocar a assinatura para
-  `def draw(self, surface, grid_pos, size, camera_offset):`
-- Trocar a primeira linha
-  `rect = pygame.Rect(x * size - offset_x, y * size - offset_y, size, size)`
-  por `rect = self._screen_rect(grid_pos, size, camera_offset)`.
-- Onde o corpo usa `x`/`y` na matemática de animação
-  (ex. `math.sin(t + x*0.6 + y*0.4)`), passar a usar
-  `grid_pos.x` / `grid_pos.y`.
+### 2.2 Integração em `GameOverScene` **e** `VictoryScene`
+Em ambas, ao **entrar** na cena com a pontuação final:
+1. Se `self.manager.save.qualifica(pontos)` → estado `PEDINDO_NOME`: instanciar `CaixaDeNome(MAX_NOME_LEN, on_confirm=self._salvar)`, onde `_salvar(nome)` chama `self.manager.save.save_score(nome, pontos)`, guarda o rank retornado para exibir ("Novo recorde! #3"), e passa ao estado normal da tela.
+2. Se **não** qualifica → segue o fluxo atual sem pedir nome.
+3. Encaminhar `handle_event`/`update`/`draw` para a `CaixaDeNome` enquanto estiver em `PEDINDO_NOME` (e **não** deixar a tecla que fecha a cena disparar durante a digitação).
 
-> A interface **pública** tem de ser vetorial. Dentro do corpo, se ajudar a
-> legibilidade da matemática de animação, é permitido um unpack local
-> (`gx, gy = grid_pos.x, grid_pos.y`) — mas **o rect sempre via `_screen_rect`**.
+**Substituir** os antigos `save_highscore(...)` dessas telas (achados na Fase 0) por este novo fluxo. O shim `save_highscore` continua existindo, mas essas telas não o usam mais.
 
-### 2.3 Atualizar o ponto de chamada em `Map.draw`
-```python
-# ANTES
-tile.draw(surface, x, y, ts, self.camera_offset_x, self.camera_offset_y)
-# DEPOIS
-tile.draw(surface, pygame.Vector2(x, y), ts, self._camera_offset)
-```
-(O campo `_camera_offset` é criado na Fase 3; se rodar a Fase 2 isolada,
-monte `pygame.Vector2(self.camera_offset_x, self.camera_offset_y)` aqui e ajuste
-na Fase 3.)
+**PARE.** Mostre o widget e os diffs cirúrgicos nas duas telas. Não avance para a Fase 3.
 
-**Verificação:** overworld e salas renderizam idênticos ao atual; tiles
-animados (lava, gelo, cristal) continuam animando. **STOP.**
+`>>> AGUARDANDO CONFIRMAÇÃO <<<`
 
 ---
 
-## FASE 3 — `Map`: offset e coordenadas como `Vector2`
+## FASE 3 — `HistoricoScene` (ranking) + item no menu
 
-**Arquivo:** `core/map.py`
+### 3.1 Nova cena `HistoricoScene(GameScene)`
+Criar `meu_jogo/cenas/historico_scene.py`. Herda de `GameScene` (reforça o eixo polimórfico `GameScene`). Deve:
+- No `__init__`, carregar `self.entradas = self.manager.save.load_scores()`.
+- `draw`: título "Histórico de Pontuação", tabela com **posição · nome · pontos** (e data, se couber), no estilo visual do projeto (fundo gradiente + fonte `SysFont`, coerente com `MenuScene`). Mensagem "Nenhuma pontuação registrada" se vazio.
+- `handle_event`: `ESC` ou ENTER volta ao menu → `change_scene(MenuScene(self.manager))`.
+- Reaproveitar helpers de desenho já existentes se possível (não duplicar gradiente/estrelas à toa; se for fácil extrair, comente).
 
-### 3.1 Offset de câmera vira um vetor
-Substituir os campos `camera_offset_x` / `camera_offset_y` por um único
-`self._camera_offset = pygame.Vector2(0.0, 0.0)`. Onde forem lidos hoje
-(`Map.draw`, `campo_de_treino`), usar `.x` / `.y`.
+### 3.2 Item no menu de título
+No `MenuScene._draw_titulo`, adicionar um botão **"Histórico"** ao lado dos já existentes ("Como jogar?", "Créditos"). Em `handle_event` (fase título), clicar nele → `change_scene(HistoricoScene(self.manager))`.
 
-### 3.2 `update_camera` recebe posição em pixels como vetor
-```python
-# ANTES
-def update_camera(self, player_pixel_x, player_pixel_y, dt=0.016):
-# DEPOIS
-def update_camera(self, player_pixel: pygame.Vector2, dt=0.016):
-```
-Reescrever o corpo usando `player_pixel.x/.y` e atualizar `self._camera_offset`
-com o mesmo lerp atual (`alpha = min(1.0, 8.0 * dt)`).
+> ⚠️ O clique hoje é hardcoded com `btn1`/`btn2` (rects fixos). Para não fragmentar a lógica (o professor critica isso), **generalize** os botões da tela de título para uma **lista de `(rect, acao)`** construída uma vez, e trate o clique iterando essa lista. Isso já deixa o "Sair" da Fase 4 trivial de encaixar.
 
-### 3.3 `get_tile_at` / `is_walkable` recebem grid como vetor
-```python
-def get_tile_at(self, grid_pos: pygame.Vector2):
-    gx, gy = int(grid_pos.x), int(grid_pos.y)
-    if 0 <= gy < self.height and 0 <= gx < self.width:
-        return self.tile_types.get(self.matrix[gy][gx])
-    return None
+**PARE.** Mostre a `HistoricoScene` e o diff do menu.
 
-def is_walkable(self, grid_pos: pygame.Vector2):
-    tile = self.get_tile_at(grid_pos)
-    return tile.is_walkable if tile else False
-```
-Atualizar **todos** os chamadores (loop de tiles em `Map.draw`, indicadores de
-portal e `_try_move` em `campo_de_treino`) para passar `pygame.Vector2(...)`.
-
-### 3.4 (Opcional, se houver) `PortalTile.spawn_x/spawn_y` → `spawn_pos: Vector2`
-Se a Fase 0 confirmar spawns em x/y soltos, agrupe em `spawn_pos` e ajuste
-`maps_data.py` e o `request_map_change`.
-
-**Verificação:** câmera segue o herói suavemente; pisar em tiles funciona;
-portais teleportam. **STOP.**
+`>>> AGUARDANDO CONFIRMAÇÃO <<<`
 
 ---
 
-## FASE 4 — `CampoDeTreinoScene`: posição e delta como `Vector2`
+## FASE 4 — Item "Sair" no menu
 
-**Arquivo:** `cenas/campo_de_treino.py`
+Adicionar um botão/opção **"Sair"** na tela de título (usando a lista de botões criada na Fase 3).
 
-- `player_grid_x` / `player_grid_y` → um único `self.player_grid = pygame.Vector2(14, 14)`.
-- `_try_move(self, dx, dy)` → `_try_move(self, delta: pygame.Vector2)`; internamente
-  `nova = self.player_grid + delta` e checar `is_walkable(nova)`.
-- No `update`, os `if keys[...]` montam um `delta = pygame.Vector2(...)` em vez de
-  `dx, dy` soltos.
-- `_detect_region` usa `(int(self.player_grid.x), int(self.player_grid.y))` na
-  lookup `_REGION_LOOKUP`.
-- Antes de `update_camera`, montar
-  `pixel = self.player_grid * TILE_SIZE + pygame.Vector2(TILE_SIZE/2, TILE_SIZE/2)`
-  e chamar `update_camera(pixel, dt)`.
-- Indicadores de portal: usar `self.player_grid.x/.y` e `cmap._camera_offset`.
+Encerramento limpo, conforme o que a Fase 0 achou:
+- Se o main loop usa uma flag (ex.: `self.manager.running = False`) → setar a flag (adicionar `manager.quit()` se fizer sentido).
+- Se não houver flag acessível → `pygame.event.post(pygame.event.Event(pygame.QUIT))` (o loop já trata `QUIT`). Escolha a opção mais limpa segundo a Fase 0 e comente o motivo.
 
-**Verificação:** movimento nas 4 direções, animação/flip do herói, notificação de
-região e indicador de portal — tudo igual ao atual. **STOP.**
+Tocar `play_sfx("menu_select")` (ou equivalente) antes de sair, se não travar o encerramento.
+
+**PARE.** Mostre o diff.
+
+`>>> AGUARDANDO CONFIRMAÇÃO <<<`
 
 ---
 
-## FASE 5 — Varredura final e conformidade
+## FASE 5 — Garantir retorno ao menu após o encerramento
 
-- `grep` por `offset_x`, `offset_y`, `grid_x`, `grid_y`, `player_pixel_x`,
-  `_x,` `_y` remanescentes em interfaces públicas. Não deve sobrar par
-  geométrico separado em assinatura.
-- Confirmar que nenhum método base ficou com assinatura diferente das filhas.
-- Rodar o fluxo completo: Menu → Overworld → cada um dos 4 portais → Batalha →
-  Vitória/GameOver. Sem regressões.
-- Resumo final (curto) do que mudou, por arquivo, para eu colar no relatório do
-  professor mostrando conformidade com o quesito de vetores. **STOP.**
+Com base na Fase 0:
+- Se `VictoryScene`/`GameOverScene` **já** voltam ao `MenuScene`, apenas confirme (nenhuma edição) e reporte como/quando.
+- Se **não** voltam (fecham o jogo ou travam), adicionar o retorno: após exibir a tela de encerramento (e depois da eventual captura de nome), em ENTER/ESC ou após um timer → `change_scene(MenuScene(self.manager))`.
+
+Garantir que reinstanciar `MenuScene(self.manager)` é seguro (ele reinicia música de menu no `__init__` — verificar se não duplica áudio).
+
+**PARE.** Reporte o comportamento final do fluxo Menu → … → Encerramento → Menu.
+
+`>>> AGUARDANDO CONFIRMAÇÃO <<<`
 
 ---
 
-## Nota de conformidade (para o relatório)
+## CHECKLIST FINAL (mapeado aos requisitos do T3)
 
-Após esta refatoração, o projeto atende ao quesito do enunciado em dois pontos:
-1. **Agrupamento x/y:** toda interface geométrica usa `pygame.Vector2` (posição,
-   velocidade, offset de câmera, grid, delta, spawn) — nenhum par x/y solto.
-2. **Ponto flutuante:** `Vector2` armazena componentes float; inteiros só no
-   acesso à matriz (índice), não no armazenamento de posição.
-E a física já seguia `posição += velocidade * dt` em `GameObject.apply_physics`.
+Ao terminar todas as fases, valide item a item:
+
+- [ ] **Menu iniciar/sair** — botão "Sair" funciona e encerra limpo. *(Fase 4)*
+- [ ] **Tela de encerramento → volta ao menu** — Victory e GameOver retornam ao `MenuScene`. *(Fase 5)*
+- [ ] **Histórico de pontuação no menu** — item "Histórico" abre `HistoricoScene` com nomes + pontos. *(Fase 3)*
+- [ ] **Salvar nome do jogador no score** — `save_score(nome, pontos)` persiste nome no JSON; capturado ao fim da run. *(Fases 1–2)*
+- [ ] **Créditos** — já existia (não mexer). ✔
+- [ ] `load_highscore()` intacto; menu ainda mostra "Recorde: N". *(Fase 1)*
+- [ ] Nenhuma dependência nova; tudo OO; comentários em PT; constantes só em `config.py`.
+
+> Itens **SETIF / IFTECH / Mostra de Curso / "acabamentos finais"** são entregas/apresentações fora do código — não fazem parte deste workstream.

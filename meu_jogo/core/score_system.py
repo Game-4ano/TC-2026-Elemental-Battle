@@ -52,6 +52,12 @@ class ScoreSystem:
 
     # ─── API pública ──────────────────────────────────────────────────────────
 
+    def resetar(self):
+        """Zera a pontuação acumulada — chamado ao iniciar uma partida nova."""
+        self._total_score  = 0
+        self._last_summary = {}
+        self._resetar_batalha()
+
     def iniciar_batalha(self):
         """Chama ao entrar em uma batalha nova."""
         self._resetar_batalha()

@@ -20,6 +20,12 @@ class Game:
         self.state            = GameState.TRAINING
         self.defeated_bosses: set[str] = set()
 
+    def reiniciar_campanha(self):
+        """Prepara uma partida nova: zera bosses derrotados, estado e o heroi."""
+        self.state = GameState.TRAINING
+        self.defeated_bosses.clear()
+        self.player.resetar()
+
     def handle_victory(self, enemy):
         if enemy.is_boss:
             self.player.gain_xp(BOSS_XP_REWARD)

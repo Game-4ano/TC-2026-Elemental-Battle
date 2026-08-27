@@ -195,7 +195,8 @@ class CharacterObject(GameObject):
                 tag = pygame.font.SysFont(None, 20).render("BOSS", True, (220, 180, 0))
                 screen.blit(tag, (cx, cy - 18))
 
-    def draw_hud(self, screen, hud_x, hud_y):
+    def draw_hud(self, screen, hud_pos: pygame.Vector2):
+        hud_x, hud_y = int(hud_pos.x), int(hud_pos.y)
         font   = pygame.font.SysFont(None, 22)
         bfont  = pygame.font.SysFont(None, 23)
         sfont  = pygame.font.SysFont(None, 17)

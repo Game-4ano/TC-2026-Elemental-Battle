@@ -17,6 +17,8 @@ class MapManager:
         self.current_map     = None
         self.maps_cache      = {}
         self.pending_map_change = None
+        # Spawn do portal atravessado, aguardando ser aplicado pela cena.
+        self.pending_spawn: pygame.Vector2 | None = None
         self.load_map(initial_map_name)
 
     def load_map(self, map_name):
@@ -36,8 +38,15 @@ class MapManager:
 
     def process_map_change(self, player):
         if self.pending_map_change:
-            dest, _spawn_pos = self.pending_map_change
+            dest, spawn_pos = self.pending_map_change
             self.load_map(dest)
             self.pending_map_change = None
+            # Guarda o spawn: quem controla a posicao do heroi (a cena) aplica.
+            self.pending_spawn = pygame.Vector2(spawn_pos)
             return True
         return False
+
+    def consume_spawn(self) -> pygame.Vector2 | None:
+        """Devolve (uma unica vez) o spawn do ultimo portal atravessado."""
+        spawn, self.pending_spawn = self.pending_spawn, None
+        return spawn

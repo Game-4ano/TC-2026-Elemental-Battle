@@ -426,8 +426,8 @@ class BattleScene(GameScene):
                               int(t["pos"].y)))
 
         # HUDs
-        self.player_obj.draw_hud(surface, 8, 8)
-        self.enemy_obj.draw_hud(surface, SCREEN_WIDTH - 192, 8)
+        self.player_obj.draw_hud(surface, pygame.Vector2(8, 8))
+        self.enemy_obj.draw_hud(surface, pygame.Vector2(SCREEN_WIDTH - 192, 8))
         self._draw_score_hud(surface)
         self._draw_turn_indicator(surface)
         self._draw_message_box(surface)
@@ -601,7 +601,8 @@ class BattleScene(GameScene):
                 cor_txt = (120, 120, 120) if sem_uso else (200, 200, 200)
                 cx4, cy4 = bx2 + btn_w // 2, by2 + 7
 
-            self._draw_action_icon(screen, i, cx4 - 26, cy4 + 7, cor_txt)
+            self._draw_action_icon(
+                screen, i, pygame.Vector2(cx4 - 26, cy4 + 7), cor_txt)
             lbl_s = f.render(label, True, cor_txt)
             screen.blit(lbl_s, (cx4 - lbl_s.get_width() // 2 + 8, cy4))
 
@@ -610,8 +611,9 @@ class BattleScene(GameScene):
                                (200, 200, 200) if sel else (140, 140, 140))
                 screen.blit(tu, (cx4 - tu.get_width() // 2, cy4 + 14))
 
-    def _draw_action_icon(self, screen, idx, cx, cy, color):
+    def _draw_action_icon(self, screen, idx, centro: pygame.Vector2, color):
         """Icone desenhado (espada/estrela/escudo/cruz) para o menu de acoes."""
+        cx, cy = int(centro.x), int(centro.y)
         if idx == 0:      # Atacar — espada
             pygame.draw.line(screen, color, (cx - 5, cy + 5), (cx + 5, cy - 5), 2)
             pygame.draw.line(screen, color, (cx - 6, cy + 2), (cx - 2, cy + 6), 2)

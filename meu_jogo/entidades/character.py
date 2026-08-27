@@ -26,9 +26,25 @@ class Character:
         self.sprite_key   = sprite_key
         self.is_defending = False   # True enquanto escudo ativo (DefendAction)
 
+        # Atributos base guardados para permitir reiniciar uma nova partida
+        # (level_up altera max_hp/damage/defense de forma cumulativa).
+        self._base_hp      = hp
+        self._base_damage  = damage
+        self._base_defense = defense
+
         # Callback opcional chamado ao subir de nível.
         # Assinatura: on_level_up(character)
         self.on_level_up = None
+
+    def resetar(self):
+        """Volta aos atributos iniciais (nova partida). Preserva elemento e callback."""
+        self.max_hp       = self._base_hp
+        self.hp           = self._base_hp
+        self.damage       = self._base_damage
+        self.defense      = self._base_defense
+        self.level        = 1
+        self.xp           = 0
+        self.is_defending = False
 
     def is_alive(self):
         return self.hp > 0

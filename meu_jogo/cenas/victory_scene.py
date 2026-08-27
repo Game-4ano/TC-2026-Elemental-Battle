@@ -3,8 +3,9 @@ import random
 import pygame
 
 from meu_jogo.core.game_scene import GameScene
-from meu_jogo.core.config import SCREEN_WIDTH, SCREEN_HEIGHT
+from meu_jogo.core.config import SCREEN_WIDTH, SCREEN_HEIGHT, MAX_NOME_LEN
 from meu_jogo.core.game_state import GameState
+from meu_jogo.cenas.widgets.caixa_nome import CaixaDeNome
 
 
 def _to_rgb(color):
@@ -30,13 +31,23 @@ class VictoryScene(GameScene):
         self._timer    = 0.0
         self._particles: list[dict] = []
 
-        total = self.summary.get("total", 0)
-        novo_recorde      = self.manager.save.save_highscore(total)
-        self._highscore   = self.manager.save.load_highscore()
-        self._novo_record = novo_recorde
+        self._total = self.summary.get("total", 0)
+
+        # Se a pontuacao entra no ranking, pede o nome antes de salvar.
+        self._rank  = 0
+        self._caixa = None
+        if self.manager.save.qualifica(self._total):
+            self._caixa = CaixaDeNome(MAX_NOME_LEN, on_confirm=self._salvar)
+        self._highscore = self.manager.save.load_highscore()
 
         self.manager.audio.play_sfx("victory")
         self._spawn_burst()
+
+    def _salvar(self, nome: str):
+        """Callback da CaixaDeNome: grava a pontuacao e fecha a entrada."""
+        self._rank      = self.manager.save.save_score(nome, self._total)
+        self._caixa     = None
+        self._highscore = self.manager.save.load_highscore()
 
     # -----------------------------------------------------------------------
     def _spawn_burst(self):
@@ -56,10 +67,16 @@ class VictoryScene(GameScene):
             })
 
     def handle_event(self, event: pygame.event.Event):
+        # Enquanto digita, ENTER confirma o nome e NAO fecha a tela.
+        if self._caixa is not None:
+            self._caixa.handle_event(event)
+            return
         if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
             self._ir_para_menu()
 
     def update(self, dt: float):
+        if self._caixa is not None:
+            self._caixa.update(dt)
         self._alpha = min(255, self._alpha + int(dt * 200))
         self._timer += dt
 
@@ -105,30 +122,34 @@ class VictoryScene(GameScene):
         surf.blit(titulo, (cx - titulo.get_width() // 2, cy - 140))
         surf.blit(sub,    (cx - sub.get_width()    // 2, cy - 50))
 
-        total = self.summary.get("total", 0)
-        score_txt = f_sm.render(f"Pontuacao final: {total}", True, (255, 215, 0))
+        score_txt = f_sm.render(f"Pontuacao final: {self._total}", True, (255, 215, 0))
         surf.blit(score_txt, (cx - score_txt.get_width() // 2, cy))
 
-        if self._novo_record:
-            rec = f_sm.render("NOVO RECORDE!", True, (255, 100, 100))
+        # Recorde / posicao conquistada no ranking
+        if self._rank > 0:
+            rec = f_sm.render(f"NOVO RECORDE!  #{self._rank}", True, (255, 100, 100))
             surf.blit(rec, (cx - rec.get_width() // 2, cy + 30))
         else:
             rec = f_sm.render(f"Recorde: {self._highscore}", True, (200, 200, 200))
             surf.blit(rec, (cx - rec.get_width() // 2, cy + 30))
 
-        hint = f_sm.render("ENTER = Continuar", True, (160, 200, 160))
-        surf.blit(hint, (cx - hint.get_width() // 2, cy + 80))
+        if self._caixa is None:
+            hint = f_sm.render("ENTER = Continuar", True, (160, 200, 160))
+            surf.blit(hint, (cx - hint.get_width() // 2, cy + 80))
 
         screen.blit(surf, (0, 0))
+
+        # Fora do fade para continuar legivel enquanto o texto ainda aparece.
+        if self._caixa is not None:
+            self._caixa.draw(screen, pygame.Vector2(cx, cy + 90))
 
     def render(self, screen: pygame.Surface):
         self.draw(screen)
 
     # -----------------------------------------------------------------------
     def _ir_para_menu(self):
-        from meu_jogo.cenas.campo_de_treino import CampoDeTreinoScene
-        player = self.manager.game.player
-        player.hp = player.max_hp
-        self.manager.map_manager.load_map("MUNDO_ABERTO")
-        self.manager.scene_manager.change_scene(
-            CampoDeTreinoScene(self.manager))
+        # Fim de jogo volta ao menu principal (a partida e reiniciada quando o
+        # jogador escolhe um elemento em MenuScene._iniciar_jogo).
+        from meu_jogo.cenas.menu_scene import MenuScene
+        self.manager.game.state = GameState.MENU
+        self.manager.scene_manager.change_scene(MenuScene(self.manager))

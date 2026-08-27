@@ -19,6 +19,10 @@ YELLOW = (220, 200, 70)
 BROWN = (120, 80, 40)
 GRAY = (180, 180, 180)
 
+# Ranking / histórico de pontuação
+MAX_HISCORES = 10          # nº de entradas guardadas/exibidas no ranking
+MAX_NOME_LEN = 12          # tamanho máximo do nome do jogador
+
 # Progressão
 XP_PER_LEVEL = 100
 

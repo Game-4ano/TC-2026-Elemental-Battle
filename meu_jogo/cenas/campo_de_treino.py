@@ -140,7 +140,19 @@ class CampoDeTreinoScene(GameScene):
     def _detect_region(self) -> str | None:
         return _REGION_LOOKUP.get((int(self.player_grid.x), int(self.player_grid.y)))
 
+    def _aplicar_spawn(self, spawn: pygame.Vector2):
+        """Reposiciona o heroi no ponto de entrada do mapa recem-carregado."""
+        self.player_grid   = pygame.Vector2(spawn)
+        self._visual_pos   = self.player_grid * TILE_SIZE
+        self._glide_target = pygame.Vector2(self._visual_pos)
+        self._glide_active = False
+
     def update(self, dt: float):
+        # Trocou de mapa por portal? Assume o spawn de destino.
+        spawn = self.manager.map_manager.consume_spawn()
+        if spawn is not None:
+            self._aplicar_spawn(spawn)
+
         keys = pygame.key.get_pressed()
         delta  = pygame.Vector2(0, 0)
         moving = False
@@ -252,7 +264,8 @@ class CampoDeTreinoScene(GameScene):
                     hint.set_alpha(hint_alpha)
                     screen.blit(hint, (sx - hint.get_width() // 2, sy - TILE_SIZE - 8))
 
-    def _draw_hero_shadow(self, screen: pygame.Surface, sx: int, sy: int):
+    def _draw_hero_shadow(self, screen: pygame.Surface, tela_pos: pygame.Vector2):
+        sx, sy = int(tela_pos.x), int(tela_pos.y)
         t     = pygame.time.get_ticks() / 1000.0
         pulse = int(2 * abs(math.sin(t * 8.0)))
         w     = TILE_SIZE - 8 - pulse
@@ -322,10 +335,10 @@ class CampoDeTreinoScene(GameScene):
         if self.manager.map_manager.current_map_name == "SALA_BATALHA_ELETRICA":
             self._draw_lightning_flash(screen)
 
-        sx = int(self._visual_pos.x - cmap._camera_offset.x)
-        sy = int(self._visual_pos.y - cmap._camera_offset.y)
+        tela_pos = self._visual_pos - cmap._camera_offset
+        sx, sy   = int(tela_pos.x), int(tela_pos.y)
 
-        self._draw_hero_shadow(screen, sx, sy)
+        self._draw_hero_shadow(screen, tela_pos)
 
         sprite_w = self._hero_ctrl.width
         sprite_h = self._hero_ctrl.height
