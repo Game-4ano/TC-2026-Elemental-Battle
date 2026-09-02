@@ -80,11 +80,22 @@ ELEMENTOS = [
         "tecla":    pygame.K_5,
         "label":    "[5]",
     },
+    {
+        "key":      "Air",
+        "nome":     ELEMENT_NAMES_PT["Air"],
+        "fraqueza": "Electric",
+        "cor":      (110, 160, 200),
+        "cor_clara":(190, 230, 255),
+        "tecla":    pygame.K_6,
+        "label":    "[6]",
+    },
 ]
 
 # Quem vence quem (atacante -> vitima). Derivado da fonte unica em core.elements
 # para nao duplicar a tabela (element_advantage preserva a ordem de insercao).
-VANTAGENS = list(element_advantage.items())
+VANTAGENS = [(atacante, vitima)
+             for atacante, vitimas in element_advantage.items()
+             for vitima in vitimas]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -156,6 +167,15 @@ def _draw_symbol(surface, elem, centro: pygame.Vector2, raio, hover=False, t=0.0
             ox  = cx + int(math.cos(ang) * (raio + 7))
             oy  = cy + int(math.sin(ang) * (raio + 7))
             pygame.draw.circle(surface, (185, 75, 255), (ox, oy), 2)
+    elif key == "Air":
+        # Rajadas horizontais atravessando o circulo
+        for i in range(3):
+            desl = (t * 40 + i * 26) % (raio * 2 + 20)
+            wx   = cx - raio - 10 + int(desl)
+            wy   = cy - 12 + i * 12
+            comp = 10 + i * 3
+            pygame.draw.line(surface, (215, 240, 255),
+                             (wx, wy), (wx + comp, wy), 1)
 
     # Nome centralizado no círculo
     fonte = pygame.font.SysFont(None, 19)
@@ -302,12 +322,16 @@ class MenuScene(GameScene):
     # -----------------------------------------------------------------------
     def _calcular_posicoes(self):
         cx0 = SCREEN_WIDTH  // 2
-        cy0 = SCREEN_HEIGHT // 2 + 20
-        r   = 130
+        cy0 = SCREEN_HEIGHT // 2
+        r   = 112
         n   = len(ELEMENTOS)
+        # Com n par, comecar em -90 poe um vertice no topo e outro na base, e a
+        # corda horizontal entre os vertices de cima passa exatamente onde fica
+        # o rotulo [n] do vertice do topo. Girar meio passo evita a colisao.
+        ang0 = -math.pi / 2 + (math.pi / n if n % 2 == 0 else 0.0)
         pos = []
         for i in range(n):
-            ang = -math.pi / 2 + (2 * math.pi * i / n)
+            ang = ang0 + (2 * math.pi * i / n)
             pos.append(pygame.Vector2(int(cx0 + r * math.cos(ang)),
                                       int(cy0 + r * math.sin(ang))))
         return pos
@@ -578,30 +602,34 @@ class MenuScene(GameScene):
             _draw_symbol(screen, elem, self._elem_pos[i], raio=38,
                          hover=(i == self._hover_idx), t=t_sel)
 
-        # Tecla de seleção abaixo de cada círculo
+        # Tecla de seleção para fora do polígono: as setas e os rótulos "vence"
+        # ocupam as cordas internas, então qualquer posição interna colide.
+        centro = sum(self._elem_pos, pygame.Vector2()) / len(self._elem_pos)
         for i, elem in enumerate(ELEMENTOS):
-            cx, cy = int(self._elem_pos[i].x), int(self._elem_pos[i].y)
-            lbl = self._f_normal.render(elem["label"], True, elem["cor_clara"])
-            screen.blit(lbl, (cx - lbl.get_width() // 2, cy + 46))
+            fora = self._elem_pos[i] + (self._elem_pos[i] - centro).normalize() * 56
+            lbl  = self._f_normal.render(elem["label"], True, elem["cor_clara"])
+            screen.blit(lbl, (int(fora.x) - lbl.get_width()  // 2,
+                              int(fora.y) - lbl.get_height() // 2))
 
         # Descrição do elemento em hover
         if self._hover_idx >= 0:
-            elem      = ELEMENTOS[self._hover_idx]
-            beats_key = next((v for a, v in VANTAGENS if a == elem["key"]), None)
-            beats_nome = next(
-                (e["nome"] for e in ELEMENTOS if e["key"] == beats_key), "—"
-            ) if beats_key else "—"
+            elem       = ELEMENTOS[self._hover_idx]
+            # Um elemento pode vencer mais de um (ex: Eletrico vence Agua e Vento).
+            beats_keys = [v for a, v in VANTAGENS if a == elem["key"]]
+            beats_nome = ", ".join(
+                e["nome"] for e in ELEMENTOS if e["key"] in beats_keys
+            ) or "—"
             fraco_nome = next(e["nome"] for e in ELEMENTOS if e["key"] == elem["fraqueza"])
             desc  = f'{elem["nome"]}  |  Forte: {beats_nome}   Fraco: {fraco_nome}'
             bg_d  = pygame.Surface((SCREEN_WIDTH - 16, 22), pygame.SRCALPHA)
             bg_d.fill((0, 0, 0, 160))
-            screen.blit(bg_d, (8, 422))
+            screen.blit(bg_d, (8, 408))
             d_s = self._f_normal.render(desc, True, elem["cor_clara"])
-            screen.blit(d_s, (SCREEN_WIDTH//2 - d_s.get_width()//2, 425))
+            screen.blit(d_s, (SCREEN_WIDTH//2 - d_s.get_width()//2, 411))
 
         # --- Legenda rodapé ---
-        leg_y = SCREEN_HEIGHT - 48
-        box   = pygame.Rect(8, leg_y - 4, SCREEN_WIDTH - 16, 42)
+        leg_y = SCREEN_HEIGHT - 62
+        box   = pygame.Rect(8, leg_y - 4, SCREEN_WIDTH - 16, 58)
         bg    = pygame.Surface((box.w, box.h), pygame.SRCALPHA)
         bg.fill((0, 0, 0, 150))
         screen.blit(bg, (box.x, box.y))
@@ -609,16 +637,22 @@ class MenuScene(GameScene):
 
         _draw_legend_arrow(screen, pygame.Vector2(18, leg_y + 9), (200, 200, 200))
         leg1 = self._f_pequena.render(
-            "A seta mostra quem vence quem  |  Clique ou [1-5] para escolher",
+            "A seta mostra quem vence quem  |  Clique ou [1-6] para escolher",
             True, (180, 180, 215))
         screen.blit(leg1, (50, leg_y + 3))
 
+        # As fraquezas vao em duas linhas: com 6 elementos uma linha so nao
+        # cabe na largura da tela.
         partes = []
         for e in ELEMENTOS:
             fraco = next(x["nome"] for x in ELEMENTOS if x["key"] == e["fraqueza"])
             partes.append(f"{e['nome']} perde para {fraco}")
-        leg2 = self._f_pequena.render("   |   ".join(partes), True, (120, 120, 155))
-        screen.blit(leg2, (SCREEN_WIDTH // 2 - leg2.get_width() // 2, leg_y + 22))
+        metade = (len(partes) + 1) // 2
+        for li, grupo in enumerate((partes[:metade], partes[metade:])):
+            linha = self._f_pequena.render(
+                "   |   ".join(grupo), True, (120, 120, 155))
+            screen.blit(linha, (SCREEN_WIDTH // 2 - linha.get_width() // 2,
+                                leg_y + 22 + li * 17))
 
     # -----------------------------------------------------------------------
     def _draw_modal(self, screen):

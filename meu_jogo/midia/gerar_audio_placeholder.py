@@ -179,6 +179,12 @@ def gerar_sfx():
             attack=0.02, decay=0.10, sustain=0.4, release=0.15,
         )),
 
+        # Vento: varredura ascendente + ruído filtrado — rajada (whoosh)
+        "attack_air": fade(envelope(
+            mix(sweep(300, 780, 0.30, 0.45), noise(0.30, 0.22)),
+            attack=0.04, decay=0.06, sustain=0.55, release=0.12,
+        )),
+
         # Impacto: percussão curta ao acertar o alvo
         "hit": fade(envelope(
             mix(square(120, 0.15, 0.50), noise(0.15, 0.40)),

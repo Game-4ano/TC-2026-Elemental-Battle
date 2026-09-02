@@ -6,7 +6,7 @@ from meu_jogo.core.game_scene import GameScene
 from meu_jogo.core.game_object import GameObject
 from meu_jogo.core.config import SCREEN_WIDTH, SCREEN_HEIGHT, WHITE, BLACK, GREEN, GRAY, RED
 from meu_jogo.core.game_state import GameState
-from meu_jogo.core.elements import element_advantage
+from meu_jogo.core.elements import beats
 from meu_jogo.entidades.acoes import (
     Action, AttackAction, SpecialAttackAction, DefendAction, HealAction
 )
@@ -91,7 +91,7 @@ class BattleScene(GameScene):
 
         atk_elem      = attacker_obj.character.element
         def_elem      = defender_obj.character.element
-        super_efetivo = element_advantage.get(atk_elem) == def_elem
+        super_efetivo = beats(atk_elem, def_elem)
 
         self.manager.audio.play_sfx(f"attack_{atk_elem.lower()}")
         attacker_obj.play_attack()
@@ -563,9 +563,9 @@ class BattleScene(GameScene):
         if self._menu_index in (0, 1):
             atk = self.battle.player.element
             dfn = self.battle.enemy.element
-            if element_advantage.get(atk) == dfn:
+            if beats(atk, dfn):
                 ht, hc = "Super Efetivo!", (60, 220, 60)
-            elif element_advantage.get(dfn) == atk:
+            elif beats(dfn, atk):
                 ht, hc = "Pouco Efetivo...", (160, 160, 160)
             else:
                 ht, hc = "", WHITE

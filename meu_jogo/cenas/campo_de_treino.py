@@ -5,6 +5,7 @@ from meu_jogo.core.game_scene import GameScene
 from meu_jogo.core.config import SCREEN_WIDTH, SCREEN_HEIGHT, TILE_SIZE
 from meu_jogo.core.map import PortalTile
 from meu_jogo.core.battle import Battle
+from meu_jogo.core.elements import ELEMENT_COLORS
 from meu_jogo.entidades.ai_entidade import SmartAI
 from meu_jogo.midia.sprites.animated_sprite import AnimationController
 from meu_jogo.data.maps_data import REGIONS
@@ -37,15 +38,6 @@ for _rname, _rdata in REGIONS.items():
         _REGION_LOOKUP[_coord] = _rname
 
 _MAP_SPRITE_SCALE = 2
-
-# Cores de elemento para o HUD
-_ELEM_COLORS = {
-    "Fire":     (220,  80,  30),
-    "Water":    ( 50, 120, 220),
-    "Air":      (150, 200, 240),
-    "Electric": (220, 200,   0),
-    "Grass":    ( 60, 180,  60),
-}
 
 
 class CampoDeTreinoScene(GameScene):
@@ -292,9 +284,11 @@ class CampoDeTreinoScene(GameScene):
                          (px+3, py+panel_h-7), (px+panel_w-7, py+panel_h-7)]:
             pygame.draw.rect(screen, (210, 180, 80), (cx2, cy2, 4, 4))
 
-        # Círculo de elemento
+        # Círculo de elemento — cor vem da fonte unica em core.elements. A copia
+        # local que existia aqui estava sem "Dark", entao quem escolhia Sombra
+        # caia no cinza de fallback.
         elem = getattr(player, "element", "")
-        ecol = _ELEM_COLORS.get(elem, (180, 180, 180))
+        ecol = ELEMENT_COLORS.get(elem, (180, 180, 180))
         pygame.draw.circle(screen, ecol, (px + 15, py + 15), 8)
         pygame.draw.circle(screen, (255, 255, 255), (px + 15, py + 15), 8, 1)
 

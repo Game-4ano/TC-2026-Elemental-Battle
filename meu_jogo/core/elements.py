@@ -2,13 +2,22 @@
 Sistema de vantagem elemental.
 """
 
+# Cada atacante mapeia para a lista de elementos que ele vence (bonus 1.5x).
+# Eletrico e o unico com duas vitimas (Agua e Ar); os demais tem uma so.
 element_advantage = {
-    "Fire": "Grass",
-    "Water": "Fire",
-    "Grass": "Water",
-    "Electric": "Water",
-    "Dark": "Fire",
+    "Fire": ["Grass"],
+    "Water": ["Fire"],
+    "Grass": ["Water"],
+    "Electric": ["Water", "Air"],
+    "Dark": ["Fire"],
+    "Air": ["Water"],
 }
+
+
+def beats(attacker_element: str, defender_element: str) -> bool:
+    """True se attacker_element tem vantagem elemental sobre defender_element."""
+    return defender_element in element_advantage.get(attacker_element, [])
+
 
 # Fonte unica dos nomes PT-BR de elemento (consumida por menu e batalha).
 ELEMENT_NAMES_PT = {
@@ -35,7 +44,7 @@ def calculate_damage(attacker, defender):
     # bonus multiplicativo (1.5*1.2=1.8x) criava combinacoes intransponiveis
     # (ex: Fogo vs Hydra) enquanto outros elementos nunca levavam bonus
     # nenhum. Usa o maior dos dois bonus, nunca os dois juntos.
-    vantagem         = element_advantage.get(attacker.element) == defender.element
+    vantagem         = beats(attacker.element, defender.element)
     explora_fraqueza = attacker.element == defender.weakness
 
     if vantagem:
