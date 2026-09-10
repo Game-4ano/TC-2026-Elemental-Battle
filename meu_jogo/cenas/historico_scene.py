@@ -13,10 +13,10 @@ from meu_jogo.cenas.menu_scene import desenhar_gradiente
 
 
 class HistoricoScene(GameScene):
-    """Tabela com posicao, nome, pontos e data das melhores partidas."""
+    """Tabela com posicao, nome, score e data das partidas registradas."""
 
     LINHA_H = 26                 # altura de cada linha da tabela
-    PAINEL_W = 520
+    PAINEL_W = 580               # largura extra: a data agora traz a hora
     PAINEL_TOPO = 88
 
     # Ouro, prata e bronze para os tres primeiros colocados
@@ -25,8 +25,9 @@ class HistoricoScene(GameScene):
 
     def __init__(self, manager):
         super().__init__(manager)
-        # Carrega uma vez: a tela e estatica, nao precisa reler o arquivo por frame.
-        self.entradas = self.manager.save.load_scores()
+        # Carrega uma vez pelo SaveSystem (a cena nunca abre o JSON direto):
+        # a tela e estatica, nao precisa reler o arquivo a cada frame.
+        self.entradas = self.manager.save.carregar_historico()
 
         self._f_titulo  = pygame.font.SysFont(None, 46)
         self._f_normal  = pygame.font.SysFont(None, 24)
@@ -57,7 +58,7 @@ class HistoricoScene(GameScene):
 
         if not self.entradas:
             msg = self._f_normal.render(
-                "Nenhuma pontuacao registrada", True, (200, 200, 220))
+                "Nenhuma partida registrada", True, (200, 200, 220))
             screen.blit(msg, (cx - msg.get_width() // 2, SCREEN_HEIGHT // 2 - 20))
             self._draw_rodape(screen)
             return
@@ -83,14 +84,14 @@ class HistoricoScene(GameScene):
         # Colunas: posicao e nome alinhados a esquerda, pontos a direita
         col_pos   = painel.x + 20
         col_nome  = painel.x + 62
-        col_pts_r = painel.right - 148      # borda direita dos pontos
-        col_data  = painel.right - 116
+        col_pts_r = painel.right - 168      # borda direita dos pontos
+        col_data  = painel.right - 140      # cabe "AAAA-MM-DD HH:MM"
 
         # Cabecalho
         cab_y = painel.y + 12
         for texto, x in (("#", col_pos), ("Nome", col_nome), ("Data", col_data)):
             screen.blit(self._f_pequena.render(texto, True, (165, 165, 200)), (x, cab_y))
-        pts_cab = self._f_pequena.render("Pontos", True, (165, 165, 200))
+        pts_cab = self._f_pequena.render("Score", True, (165, 165, 200))
         screen.blit(pts_cab, (col_pts_r - pts_cab.get_width(), cab_y))
         pygame.draw.line(screen, (90, 80, 140),
                          (painel.x + 12, cab_y + 19),
@@ -104,7 +105,7 @@ class HistoricoScene(GameScene):
             screen.blit(self._f_normal.render(f"{i + 1}", True, cor), (col_pos, y))
             screen.blit(self._f_normal.render(entrada["nome"], True, cor), (col_nome, y))
 
-            pts = self._f_normal.render(str(entrada["pontos"]), True, cor)
+            pts = self._f_normal.render(str(entrada["score"]), True, cor)
             screen.blit(pts, (col_pts_r - pts.get_width(), y))
 
             if entrada["data"]:

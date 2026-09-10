@@ -15,6 +15,10 @@ class GameOverScene(GameScene):
         self._alpha      = 0
         self._fade_done  = False
 
+        # A partida vai para o historico AGORA, sem nome ainda: se o jogo
+        # fechar durante a digitacao, o registro ja esta no disco.
+        self.manager.save.salvar_partida("", total_score)
+
         # Se a pontuacao entra no ranking, pede o nome antes de salvar.
         self._rank  = 0
         self._caixa = None
@@ -27,6 +31,8 @@ class GameOverScene(GameScene):
     def _salvar(self, nome: str):
         """Callback da CaixaDeNome: grava a pontuacao e fecha a entrada."""
         self._rank      = self.manager.save.save_score(nome, self.total_score)
+        # Completa o nome do registro ja gravado no historico.
+        self.manager.save.renomear_ultima_partida(nome)
         self._caixa     = None
         self._highscore = self.manager.save.load_highscore()
 
